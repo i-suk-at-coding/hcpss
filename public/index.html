@@ -4,72 +4,16 @@
   <meta charset="UTF-8">
   <title>Chat App</title>
   <style>
-    body {
-      font-family: "Segoe UI", sans-serif;
-      background: #f0f2f5;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      height: 100vh;
-    }
-    #chat-container {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      max-width: 600px;
-      height: 100%;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    #messages {
-      flex: 1;
-      list-style: none;
-      margin: 0;
-      padding: 15px;
-      overflow-y: auto;
-    }
-    #messages li {
-      margin: 10px 0;
-      padding: 10px 15px;
-      border-radius: 20px;
-      max-width: 70%;
-      word-wrap: break-word;
-    }
-    #messages li.self {
-      background: #dcf8c6;
-      margin-left: auto;
-      text-align: right;
-    }
-    #messages li.other {
-      background: #e9f5ff;
-      margin-right: auto;
-    }
-    #form {
-      display: flex;
-      border-top: 1px solid #ddd;
-      padding: 10px;
-    }
-    #input {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 20px;
-      outline: none;
-    }
-    button {
-      margin-left: 10px;
-      background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 20px;
-      padding: 10px 20px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0056b3;
-    }
+    body { font-family: "Segoe UI", sans-serif; background: #f0f2f5; margin: 0; padding: 0; }
+    #chat-container { display: flex; flex-direction: column; max-width: 600px; margin: auto; height: 100vh; background: #fff; }
+    #messages { flex: 1; list-style: none; margin: 0; padding: 15px; overflow-y: auto; }
+    #messages li { margin: 10px 0; padding: 10px 15px; border-radius: 20px; max-width: 70%; word-wrap: break-word; }
+    #messages li.self { background: #dcf8c6; margin-left: auto; text-align: right; }
+    #messages li.other { background: #e9f5ff; margin-right: auto; }
+    #form { display: flex; border-top: 1px solid #ddd; padding: 10px; }
+    #input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
+    button { margin-left: 10px; background: #007bff; color: white; border: none; border-radius: 20px; padding: 10px 20px; cursor: pointer; }
+    button:hover { background: #0056b3; }
   </style>
 </head>
 <body>
@@ -88,17 +32,10 @@
     const input = document.getElementById('input');
     const messages = document.getElementById('messages');
 
-    // 🔹 Prompt for username
-    const username = prompt("Enter your username:") || "Anonymous";
-
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       if (input.value) {
-        socket.emit('chat message', {
-          user: username,
-          text: input.value,
-          time: new Date().toLocaleTimeString()
-        });
+        socket.emit('chat message', input.value);
         input.value = '';
       }
     });
@@ -114,10 +51,20 @@
     function addMessage(msg) {
       const item = document.createElement('li');
       item.textContent = `[${msg.time}] ${msg.user}: ${msg.text}`;
-      item.classList.add(msg.user === username ? 'self' : 'other');
+      item.classList.add(msg.user === getUsername() ? 'self' : 'other');
       messages.appendChild(item);
       messages.scrollTop = messages.scrollHeight;
+    }
+
+    // Helper: get username from server session
+    function getUsername() {
+      // The server tags messages with the logged-in username
+      // So we just compare msg.user to the current session user
+      // For simplicity, assume the first "self" message sets your identity
+      const selfMsg = document.querySelector('#messages li.self');
+      return selfMsg ? selfMsg.textContent.split(' ')[1] : null;
     }
   </script>
 </body>
 </html>
+
