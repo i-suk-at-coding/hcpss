@@ -88,7 +88,8 @@
     const input = document.getElementById('input');
     const messages = document.getElementById('messages');
 
-    const username = prompt("Enter your name:") || "Anonymous";
+    // 🔹 Prompt for username
+    const username = prompt("Enter your username:") || "Anonymous";
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
