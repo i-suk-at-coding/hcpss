@@ -33,7 +33,7 @@ if (fs.existsSync('history.json')) {
 // Routes
 app.get('/', (req, res) => {
   if (!req.session.user) {
-    return res.redirect('/login.html');
+    return res.sendFile(__dirname + '/public/login.html'); // ✅ lowercase
   }
   res.sendFile(__dirname + '/public/index.html');
 });
