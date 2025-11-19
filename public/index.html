@@ -69,37 +69,57 @@
       }
     </style>
   </head>
+  <body>
+  <div id="chat-container">
+    <ul id="messages"></ul>
+    <form id="form">
+      <input id="input" autocomplete="off" placeholder="Type a message..." />
+      <button>Send</button>
+    </form>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
-<script>
-  const socket = io();
-  const form = document.getElementById('form');
-  const input = document.getElementById('input');
-  const messages = document.getElementById('messages');
+  <script>
+    const socket = io();
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+    const messages = document.getElementById('messages');
 
-  // Send new messages
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    if (input.value) {
-      socket.emit('chat message', { text: input.value, time: new Date().toLocaleTimeString() });
-      input.value = '';
-    }
-  });
+    // Ask user for a name
+    const username = prompt("Enter your name:") || "Anonymous";
 
-  // load chat history when you first connect
-  socket.on('chat history', (history) => {
-    history.forEach((msg) => {
-      const item = document.createElement('li');
-      item.textContent = `[${msg.time}] ${msg.text}`;
-      messages.appendChild(item);
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (input.value) {
+        socket.emit('chat message', {
+          user: username,
+          text: input.value,
+          time: new Date().toLocaleTimeString()
+        });
+        input.value = '';
+      }
     });
-  });
 
-  // Handle new incoming messages
-  socket.on('chat message', (msg) => {
-    const item = document.createElement('li');
-    item.textContent = `[${msg.time}] ${msg.text}`;
-    messages.appendChild(item);
-    messages.scrollTop = messages.scrollHeight; // auto-scroll
-  });
-</script>
+    // Load chat history
+    socket.on('chat history', (history) => {
+      history.forEach((msg) => addMessage(msg));
+    });
+
+    // Handle new messages
+    socket.on('chat message', (msg) => {
+      addMessage(msg);
+    });
+
+    // Function to render messages
+    function addMessage(msg) {
+      const item = document.createElement('li');
+      item.textContent = `[${msg.time}] ${msg.user}: ${msg.text}`;
+      if (msg.user === username) {
+        item.classList.add('self'); // style your own messages
+      }
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+    }
+  </script>
+  </body>
 </html>
