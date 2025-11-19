@@ -69,36 +69,37 @@
       }
     </style>
   </head>
-  <body>
-  <div id="chat-container">
-    <ul id="messages"></ul>
-    <form id="form">
-      <input id="input" autocomplete="off" placeholder="Type a message..." />
-      <button>Send</button>
-    </form>
-  </div>
-
   <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-    const form = document.getElementById('form');
-    const input = document.getElementById('input');
-    const messages = document.getElementById('messages');
+<script>
+  const socket = io();
+  const form = document.getElementById('form');
+  const input = document.getElementById('input');
+  const messages = document.getElementById('messages');
 
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (input.value) {
-        socket.emit('chat message', { text: input.value, time: new Date().toLocaleTimeString() });
-        input.value = '';
-      }
-    });
+  // Send new messages
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (input.value) {
+      socket.emit('chat message', { text: input.value, time: new Date().toLocaleTimeString() });
+      input.value = '';
+    }
+  });
 
-    socket.on('chat message', (msg) => {
+  // load chat history when you first connect
+  socket.on('chat history', (history) => {
+    history.forEach((msg) => {
       const item = document.createElement('li');
       item.textContent = `[${msg.time}] ${msg.text}`;
       messages.appendChild(item);
-      messages.scrollTop = messages.scrollHeight; // auto-scroll
     });
-  </script>
-  </body>
+  });
+
+  // Handle new incoming messages
+  socket.on('chat message', (msg) => {
+    const item = document.createElement('li');
+    item.textContent = `[${msg.time}] ${msg.text}`;
+    messages.appendChild(item);
+    messages.scrollTop = messages.scrollHeight; // auto-scroll
+  });
+</script>
 </html>
