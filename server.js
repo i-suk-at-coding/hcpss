@@ -19,24 +19,17 @@ if (fs.existsSync('history.json')) {
 io.on('connection', (socket) => {
   console.log('A user connected');
 
-  // Send history to new user
+  // Send existing history to the new user
   socket.emit('chat history', chatHistory);
 
+  // 🔹 Add your block here:
   socket.on('chat message', (msg) => {
-    chatHistory.push(msg);
-
-    // Save history to file
-    fs.writeFileSync('history.json', JSON.stringify(chatHistory));
-
-    io.emit('chat message', msg);
+    chatHistory.push(msg); // save message in memory
+    fs.writeFileSync('history.json', JSON.stringify(chatHistory)); // persist to file
+    io.emit('chat message', msg); // broadcast to all clients
   });
 
   socket.on('disconnect', () => {
     console.log('User disconnected');
   });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
 });
