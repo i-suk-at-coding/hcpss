@@ -73,6 +73,9 @@ io.on('connection', (socket) => {
   const username = socket.request.session?.user || 'Anonymous';
   console.log(`${username} connected`);
 
+  // Send username to client
+  socket.emit('set username', username);
+
   // Send chat history
   socket.emit('chat history', chatHistory);
 
