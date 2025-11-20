@@ -3,34 +3,20 @@
 <head>
   <meta charset="utf-8">
   <title>Login / Register</title>
-  <style>
-    body { font-family: "Segoe UI", sans-serif; background: #f0f2f5; margin: 0; padding: 0; }
-    #container { max-width: 500px; margin: 50px auto; background: #fff; padding: 20px; border-radius: 8px; }
-    h1 { margin-bottom: 10px; }
-    form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-    input { padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
-    button { background: #007bff; color: white; border: none; border-radius: 20px; padding: 10px; cursor: pointer; }
-    button:hover { background: #0056b3; }
-    .note { color: #666; font-size: 14px; margin-top: 10px; }
-  </style>
 </head>
 <body>
-  <div id="container">
-    <h1>Login</h1>
-    <form action="/login" method="POST">
-      <input type="text" name="username" placeholder="Username" required>
-      <input type="password" name="password" placeholder="Password" required>
-      <button type="submit">Login</button>
-    </form>
+  <h1>Login</h1>
+  <form action="/login" method="POST">
+    <input type="text" name="username" placeholder="Username" required>
+    <input type="password" name="password" placeholder="Password" required>
+    <button type="submit">Login</button>
+  </form>
 
-    <h1>Register</h1>
-    <form action="/register" method="POST">
-      <input type="text" name="username" placeholder="Choose a username" required>
-      <input type="password" name="password" placeholder="Choose a password" required>
-      <button type="submit">Create Account</button>
-    </form>
-
-    <p class="note">Tip: Register first, then log in with your new account.</p>
-  </div>
+  <h1>Register</h1>
+  <form action="/register" method="POST">
+    <input type="text" name="username" placeholder="Choose a username" required>
+    <input type="password" name="password" placeholder="Choose a password" required>
+    <button type="submit">Create Account</button>
+  </form>
 </body>
 </html>
