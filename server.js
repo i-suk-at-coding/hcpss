@@ -17,7 +17,7 @@ app.use(express.json());
 const sessionMiddleware = session({
   secret: 'supersecret',
   resave: false,
-  saveUninitialized: false   // don’t create empty sessions
+  saveUninitialized: false
 });
 app.use(sessionMiddleware);
 
@@ -39,30 +39,29 @@ if (fs.existsSync(usersFile)) {
 // Chat history
 let chatHistory = [];
 
-// Routes
+// Always serve index.html
 app.get('/', (req, res) => {
-  if (!req.session.user) {
-    return res.sendFile(path.join(__dirname, 'public', 'login.html'));
-  }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Login
 app.post('/login', (req, res) => {
   const { username, password } = req.body || {};
   if (users[username] && users[username] === password) {
     req.session.user = username;
     return res.redirect('/');
   }
-  res.status(401).send('Invalid login. <a href="/login.html">Try again</a>');
+  res.status(401).send('Invalid login. <a href="/">Try again</a>');
 });
 
+// Register
 app.post('/register', (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
     return res.status(400).send('Missing username or password');
   }
   if (users[username]) {
-    return res.status(400).send('User already exists. <a href="/login.html">Try login</a>');
+    return res.status(400).send('User already exists. <a href="/">Try login</a>');
   }
   users[username] = password;
   fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
@@ -70,6 +69,7 @@ app.post('/register', (req, res) => {
   res.redirect('/');
 });
 
+// Logout
 app.get('/logout', (req, res) => {
   req.session.destroy(() => {
     res.redirect('/');
@@ -81,14 +81,14 @@ io.on('connection', (socket) => {
   const username = socket.request.session?.user || 'Anonymous';
   socket.emit('set username', username);
 
-  // Send chat history to new client
+  // Send chat history
   socket.emit('chat history', chatHistory);
 
   socket.on('chat message', (msg) => {
     const message = {
       user: username,
       text: msg,
-      time: new Date().toLocaleTimeString()
+      time: new Date().toISOString() // UTC, client converts to local
     };
     chatHistory.push(message);
     io.emit('chat message', message);
