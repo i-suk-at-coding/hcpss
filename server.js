@@ -1,36 +1,39 @@
-// server.js
 const express = require('express');
-const http = require('http');
-const socketIO = require('socket.io');
 const session = require('express-session');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const socketIo = require('socket.io');
 
-const app = express(); // ✅ define app
+const app = express();
 const server = http.createServer(app);
-const io = socketIO(server);
+const io = socketIo(server);
 
-// Shared session middleware
+// Middleware
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// Session middleware
 const sessionMiddleware = session({
   secret: 'supersecret',
   resave: false,
-  saveUninitialized: true
+  saveUninitialized: false   // important: don’t create empty sessions
 });
-
-app.use(express.static('public'));
-app.use(express.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
 
-// Users
-let users = {};
-if (fs.existsSync('users.json')) {
-  users = JSON.parse(fs.readFileSync('users.json', 'utf8'));
-}
+// Share session with Socket.IO
+io.use((socket, next) => {
+  sessionMiddleware(socket.request, {}, next);
+});
 
-// Chat history
-let chatHistory = [];
-if (fs.existsSync('history.json')) {
-  chatHistory = JSON.parse(fs.readFileSync('history.json', 'utf8'));
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Load users from file
+let users = {};
+const usersFile = path.join(__dirname, 'users.json');
+if (fs.existsSync(usersFile)) {
+  users = JSON.parse(fs.readFileSync(usersFile));
 }
 
 // Routes
@@ -39,10 +42,6 @@ app.get('/', (req, res) => {
     return res.sendFile(path.join(__dirname, 'public', 'login.html'));
   }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.get('/login.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 app.post('/login', (req, res) => {
@@ -57,46 +56,35 @@ app.post('/login', (req, res) => {
 app.post('/register', (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
-    return res.status(400).send('Missing fields. <a href="/login.html">Back</a>');
+    return res.status(400).send('Missing username or password');
   }
   if (users[username]) {
-    return res.status(409).send('User already exists. <a href="/login.html">Login</a>');
+    return res.status(400).send('User already exists. <a href="/login.html">Try login</a>');
   }
   users[username] = password;
-  fs.writeFileSync('users.json', JSON.stringify(users));
+  fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
   req.session.user = username;
   res.redirect('/');
 });
 
-// Socket.IO with sessions
-io.use((socket, next) => {
-  sessionMiddleware(socket.request, {}, next);
+app.get('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/');
+  });
 });
 
+// Socket.IO
 io.on('connection', (socket) => {
   const username = socket.request.session?.user || 'Anonymous';
-  console.log(`${username} connected`);
-
-  // Send username to client
   socket.emit('set username', username);
 
-  // Send chat history
-  socket.emit('chat history', chatHistory);
-
-  // Handle messages
   socket.on('chat message', (msg) => {
-    const message = { user: username, text: msg, time: new Date().toLocaleTimeString() };
-    chatHistory.push(message);
-    fs.writeFileSync('history.json', JSON.stringify(chatHistory));
-    io.emit('chat message', message);
-  });
-
-  socket.on('disconnect', () => {
-    console.log(`${username} disconnected`);
+    io.emit('chat message', { user: username, text: msg });
   });
 });
 
 // Start server
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
-
+const PORT = process.env.PORT || 10000;
+server.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+});
