@@ -17,7 +17,7 @@ app.use(express.json());
 const sessionMiddleware = session({
   secret: 'supersecret',
   resave: false,
-  saveUninitialized: false   // important: don’t create empty sessions
+  saveUninitialized: false   // don’t create empty sessions
 });
 app.use(sessionMiddleware);
 
@@ -35,6 +35,9 @@ const usersFile = path.join(__dirname, 'users.json');
 if (fs.existsSync(usersFile)) {
   users = JSON.parse(fs.readFileSync(usersFile));
 }
+
+// Chat history
+let chatHistory = [];
 
 // Routes
 app.get('/', (req, res) => {
@@ -78,8 +81,17 @@ io.on('connection', (socket) => {
   const username = socket.request.session?.user || 'Anonymous';
   socket.emit('set username', username);
 
+  // Send chat history to new client
+  socket.emit('chat history', chatHistory);
+
   socket.on('chat message', (msg) => {
-    io.emit('chat message', { user: username, text: msg });
+    const message = {
+      user: username,
+      text: msg,
+      time: new Date().toLocaleTimeString()
+    };
+    chatHistory.push(message);
+    io.emit('chat message', message);
   });
 });
 
