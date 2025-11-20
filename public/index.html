@@ -32,6 +32,12 @@
   const input = document.getElementById('input');
   const messages = document.getElementById('messages');
 
+  let myUsername = null;
+
+  socket.on('set username', (username) => {
+    myUsername = username;
+  });
+
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (input.value) {
@@ -52,20 +58,14 @@
 
   function addMessage(msg) {
     const item = document.createElement('li');
-    // Format the object into readable text
     item.textContent = `[${msg.time}] ${msg.user}: ${msg.text}`;
-    // Style messages depending on whether they're yours or others
-    item.classList.add(msg.user === getUsername() ? 'self' : 'other');
+    if (msg.user === myUsername) {
+      item.classList.add('self');
+    } else {
+      item.classList.add('other');
+    }
     messages.appendChild(item);
     messages.scrollTop = messages.scrollHeight;
-  }
-
-  // Helper: get username from server session
-  function getUsername() {
-    // The server tags messages with the logged-in username
-    // For simplicity, assume the first "self" message sets your identity
-    const selfMsg = document.querySelector('#messages li.self');
-    return selfMsg ? selfMsg.textContent.split(' ')[1] : null;
   }
 </script>
 
