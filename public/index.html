@@ -26,45 +26,49 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-    const form = document.getElementById('form');
-    const input = document.getElementById('input');
-    const messages = document.getElementById('messages');
+<script>
+  const socket = io();
+  const form = document.getElementById('form');
+  const input = document.getElementById('input');
+  const messages = document.getElementById('messages');
 
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (input.value) {
-        socket.emit('chat message', input.value);
-        input.value = '';
-      }
-    });
-
-    socket.on('chat history', (history) => {
-      history.forEach((msg) => addMessage(msg));
-    });
-
-    socket.on('chat message', (msg) => {
-      addMessage(msg);
-    });
-
-    function addMessage(msg) {
-      const item = document.createElement('li');
-      item.textContent = `[${msg.time}] ${msg.user}: ${msg.text}`;
-      item.classList.add(msg.user === getUsername() ? 'self' : 'other');
-      messages.appendChild(item);
-      messages.scrollTop = messages.scrollHeight;
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (input.value) {
+      socket.emit('chat message', input.value);
+      input.value = '';
     }
+  });
 
-    // Helper: get username from server session
-    function getUsername() {
-      // The server tags messages with the logged-in username
-      // So we just compare msg.user to the current session user
-      // For simplicity, assume the first "self" message sets your identity
-      const selfMsg = document.querySelector('#messages li.self');
-      return selfMsg ? selfMsg.textContent.split(' ')[1] : null;
-    }
-  </script>
+  // Load chat history
+  socket.on('chat history', (history) => {
+    history.forEach((msg) => addMessage(msg));
+  });
+
+  // Handle new messages
+  socket.on('chat message', (msg) => {
+    addMessage(msg);
+  });
+
+  function addMessage(msg) {
+    const item = document.createElement('li');
+    // Format the object into readable text
+    item.textContent = `[${msg.time}] ${msg.user}: ${msg.text}`;
+    // Style messages depending on whether they're yours or others
+    item.classList.add(msg.user === getUsername() ? 'self' : 'other');
+    messages.appendChild(item);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  // Helper: get username from server session
+  function getUsername() {
+    // The server tags messages with the logged-in username
+    // For simplicity, assume the first "self" message sets your identity
+    const selfMsg = document.querySelector('#messages li.self');
+    return selfMsg ? selfMsg.textContent.split(' ')[1] : null;
+  }
+</script>
+
 </body>
 </html>
 
