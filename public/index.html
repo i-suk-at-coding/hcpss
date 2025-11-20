@@ -5,7 +5,10 @@
   <title>Chat App</title>
   <style>
     body { font-family: "Segoe UI", sans-serif; background: #f0f2f5; margin: 0; padding: 0; }
-    #chat-container { display: flex; flex-direction: column; max-width: 600px; margin: auto; height: 100vh; background: #fff; }
+    #container { max-width: 600px; margin: auto; height: 100vh; background: #fff; display: flex; flex-direction: column; }
+    #auth { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    #auth form { display: flex; flex-direction: column; gap: 10px; width: 80%; max-width: 300px; }
+    #chat { flex: 1; display: none; flex-direction: column; }
     #messages { flex: 1; list-style: none; margin: 0; padding: 15px; overflow-y: auto; }
     #messages li { margin: 10px 0; padding: 10px 15px; border-radius: 20px; max-width: 70%; word-wrap: break-word; }
     #messages li.self { background: #dcf8c6; margin-left: auto; text-align: right; }
@@ -17,58 +20,84 @@
   </style>
 </head>
 <body>
-  <div id="chat-container">
-    <ul id="messages"></ul>
-    <form id="form">
-      <input id="input" autocomplete="off" placeholder="Type a message..." />
-      <button>Send</button>
-    </form>
+  <div id="container">
+    <!-- Login/Register -->
+    <div id="auth">
+      <h2>Login</h2>
+      <form id="loginForm" method="POST" action="/login">
+        <input type="text" name="username" placeholder="Username" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <button type="submit">Login</button>
+      </form>
+
+      <h2>Register</h2>
+      <form id="registerForm" method="POST" action="/register">
+        <input type="text" name="username" placeholder="Choose a username" required>
+        <input type="password" name="password" placeholder="Choose a password" required>
+        <button type="submit">Create Account</button>
+      </form>
+    </div>
+
+    <!-- Chat -->
+    <div id="chat">
+      <ul id="messages"></ul>
+      <form id="form">
+        <input id="input" autocomplete="off" placeholder="Type a message..." />
+        <button>Send</button>
+      </form>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-<script>
-  const socket = io();
-  const form = document.getElementById('form');
-  const input = document.getElementById('input');
-  const messages = document.getElementById('messages');
+  <script>
+    const socket = io();
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+    const messages = document.getElementById('messages');
+    const auth = document.getElementById('auth');
+    const chat = document.getElementById('chat');
 
-  let myUsername = null;
+    let myUsername = null;
 
-  socket.on('set username', (username) => {
-    myUsername = username;
-  });
+    socket.on('set username', (username) => {
+      myUsername = username;
+      if (username && username !== 'Anonymous') {
+        auth.style.display = 'none';
+        chat.style.display = 'flex';
+      }
+    });
 
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    if (input.value) {
-      socket.emit('chat message', input.value);
-      input.value = '';
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (input.value) {
+        socket.emit('chat message', input.value);
+        input.value = '';
+      }
+    });
+
+    socket.on('chat history', (history) => {
+      history.forEach((msg) => addMessage(msg));
+    });
+
+    socket.on('chat message', (msg) => {
+      addMessage(msg);
+    });
+
+    function addMessage(msg) {
+      const item = document.createElement('li');
+      const localTime = new Date(msg.time).toLocaleString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      item.textContent = `[${localTime}] ${msg.user}: ${msg.text}`;
+      if (msg.user === myUsername) {
+        item.classList.add('self');
+      } else {
+        item.classList.add('other');
+      }
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
     }
-  });
-
-  // Load chat history
-  socket.on('chat history', (history) => {
-    history.forEach((msg) => addMessage(msg));
-  });
-
-  // Handle new messages
-  socket.on('chat message', (msg) => {
-    addMessage(msg);
-  });
-
-  function addMessage(msg) {
-    const item = document.createElement('li');
-    item.textContent = `[${msg.time}] ${msg.user}: ${msg.text}`;
-    if (msg.user === myUsername) {
-      item.classList.add('self');
-    } else {
-      item.classList.add('other');
-    }
-    messages.appendChild(item);
-    messages.scrollTop = messages.scrollHeight;
-  }
-</script>
-
+  </script>
 </body>
 </html>
-
