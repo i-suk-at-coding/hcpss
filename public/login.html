@@ -1,22 +1,44 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <title>Login</title>
+  <style>
+    body { font-family: "Segoe UI", sans-serif; background: #f0f2f5; margin: 0; padding: 0; }
+    #chat-container { display: flex; flex-direction: column; max-width: 600px; margin: auto; height: 100vh; background: #fff; }
+    .panel { flex: 1; padding: 20px; display: flex; flex-direction: column; justify-content: center; }
+    h1 { margin-bottom: 10px; }
+    form { display: flex; flex-direction: column; gap: 10px; }
+    input { padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
+    button { background: #007bff; color: white; border: none; border-radius: 20px; padding: 10px 20px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    .row { display: flex; gap: 10px; }
+    .row > * { flex: 1; }
+    .note { color: #666; font-size: 14px; margin-top: 10px; }
+  </style>
 </head>
 <body>
-  <h2>Login</h2>
-  <form action="/login" method="POST">
-    <input name="username" placeholder="Username" required>
-    <input name="password" type="password" placeholder="Password" required>
-    <button type="submit">Login</button>
-  </form>
+  <div id="chat-container">
+    <div class="panel">
+      <h1>Login</h1>
+      <form action="/login" method="POST">
+        <input type="text" name="username" placeholder="Username" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <button type="submit">Login</button>
+      </form>
 
-  <h2>Register</h2>
-  <form action="/register" method="POST">
-    <input name="username" placeholder="Username" required>
-    <input name="password" type="password" placeholder="Password" required>
-    <button type="submit">Register</button>
-  </form>
+      <h1 style="margin-top:30px;">Register</h1>
+      <form action="/register" method="POST">
+        <div class="row">
+          <input type="text" name="username" placeholder="Username" required>
+          <input type="password" name="password" placeholder="Password" required>
+        </div>
+        <button type="submit">Create account</button>
+      </form>
+
+      <p class="note">Tip: Register first, then log in.</p>
+    </div>
+  </div>
 </body>
 </html>
+
