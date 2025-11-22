@@ -4,26 +4,29 @@
   <meta charset="UTF-8">
   <title>Platformer + Chat</title>
   <style>
-    body { margin: 0; display: flex; height: 100vh; background: #0f0f0f; color: #eee; font-family: "Segoe UI", sans-serif; }
-    #left { flex: 1; display: flex; flex-direction: column; }
-    #hud { height: 40px; background: #1a1a1a; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; border-bottom: 1px solid #333; }
-    #hud span { font-size: 14px; }
-    #game { flex: 1; display: flex; align-items: center; justify-content: center; }
-    #canvas { background: #222; border: 1px solid #333; }
-    #right { width: 320px; display: flex; flex-direction: column; border-left: 1px solid #333; }
-    #players { background: #1a1a1a; padding: 8px; border-bottom: 1px solid #333; }
-    #players h3 { margin: 0 0 6px; font-size: 14px; }
-    #players ul { list-style: none; padding: 0; margin: 0; }
-    #players li { font-size: 13px; margin: 4px 0; display: flex; align-items: center; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #3b82f6; }
-    #messages { flex: 1; list-style: none; margin: 0; padding: 10px; overflow-y: auto; overflow-x: hidden; background: #121212; }
-    #messages li { margin: 6px 0; padding: 8px 10px; border-radius: 8px; background: #1f2937; font-size: 13px; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; max-width: 260px; }
-    #messages li.self { background: #064e3b; }
-    #messages .time { font-size: 11px; opacity: 0.6; margin-left: 6px; }
-    #chatForm { display: flex; gap: 6px; padding: 10px; border-top: 1px solid #333; background: #1a1a1a; }
-    #chatInput { flex: 1; padding: 8px; border: 1px solid #333; border-radius: 6px; background: #111; color: #eee; }
-    button { background: #3b82f6; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
-    button:hover { background: #2563eb; }
+    body { margin:0; display:flex; height:100vh; background:#0f0f0f; color:#eee; font-family:"Segoe UI",sans-serif; }
+    #left { flex:1; display:flex; flex-direction:column; }
+    #hud { height:40px; background:#1a1a1a; display:flex; align-items:center; justify-content:space-between; padding:0 12px; border-bottom:1px solid #333; }
+    #hud span { font-size:14px; }
+    #game { flex:1; display:flex; align-items:center; justify-content:center; }
+    #canvas { background:#222; border:1px solid #333; }
+    #right { width:320px; display:flex; flex-direction:column; border-left:1px solid #333; }
+    #players { background:#1a1a1a; padding:8px; border-bottom:1px solid #333; }
+    #players h3 { margin:0 0 6px; font-size:14px; }
+    #players ul { list-style:none; padding:0; margin:0; }
+    #players li { font-size:13px; margin:4px 0; display:flex; align-items:center; }
+    .dot { width:8px; height:8px; border-radius:50%; margin-right:6px; background:#3b82f6; }
+    #messages { flex:1; list-style:none; margin:0; padding:10px; overflow-y:auto; overflow-x:hidden; background:#121212; }
+    #messages li { margin:6px 0; padding:8px 10px; border-radius:8px; background:#1f2937; font-size:13px; word-wrap:break-word; overflow-wrap:break-word; white-space:pre-wrap; max-width:260px; }
+    #messages li.self { background:#064e3b; }
+    #messages .time { font-size:11px; opacity:0.6; margin-left:6px; }
+    #chatForm { display:flex; gap:6px; padding:10px; border-top:1px solid #333; background:#1a1a1a; }
+    #chatInput { flex:1; padding:8px; border:1px solid #333; border-radius:6px; background:#111; color:#eee; }
+    button { background:#3b82f6; color:#fff; border:none; border-radius:6px; padding:8px 12px; cursor:pointer; }
+    button:hover { background:#2563eb; }
+    #editorBtn { background:#10b981; color:#fff; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; margin-left:12px; }
+    #editorBtn:hover { background:#059669; }
+
   </style>
 </head>
 <body>
@@ -31,7 +34,8 @@
     <div id="hud">
       <span id="username">You:</span>
       <span id="count">Players: 0</span>
-    </div>
+      <button id="editorBtn">Map Editor</button>
+  </div>
     <div id="game">
       <canvas id="canvas" width="900" height="600"></canvas>
     </div>
@@ -198,6 +202,9 @@
       requestAnimationFrame(render);
     }
     requestAnimationFrame(render);
+    document.getElementById('editorBtn').addEventListener('click', () => {
+    window.location.href = '/map-editor.html';
+  });
   </script>
 </body>
 </html>
