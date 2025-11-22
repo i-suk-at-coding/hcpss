@@ -7,7 +7,15 @@ const socketIo = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+
+// Socket.IO with CORS + credentials
+const io = socketIo(server, {
+  cors: {
+    origin: "http://localhost:10000", // change to your domain if deployed
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -17,7 +25,7 @@ const sessionMiddleware = session({
   secret: 'supersecret',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false }
+  cookie: { secure: false, sameSite: 'lax' }
 });
 app.use(sessionMiddleware);
 io.use((socket, next) => sessionMiddleware(socket.request, {}, next));
@@ -31,7 +39,7 @@ const usersFile = path.join(__dirname, 'users.json');
 if (fs.existsSync(usersFile)) {
   users = JSON.parse(fs.readFileSync(usersFile));
 } else {
-  // create default owner account
+  // default owner account
   users['owner'] = 'ownerpass';
   fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
 }
@@ -72,10 +80,12 @@ app.get('/logout', (req, res) => {
 
 // Socket.IO
 io.on('connection', (socket) => {
+  console.log('Handshake cookies:', socket.handshake.headers.cookie);
   const username = socket.request.session?.user || null;
+  console.log('Socket connected, user:', username);
   socket.emit('set username', username);
 
-  if (!username) return; // not logged in, no chat
+  if (!username) return;
 
   socket.emit('chat history', chatHistory);
 
