@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Chat App</title>
+  <title>Owner Chat</title>
   <style>
     body { font-family: "Segoe UI", sans-serif; background: #f0f2f5; margin: 0; padding: 0; }
     #container { max-width: 600px; margin: auto; height: 100vh; background: #fff; display: flex; flex-direction: column; }
@@ -17,24 +17,18 @@
     #input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
     button { margin-left: 10px; background: #007bff; color: white; border: none; border-radius: 20px; padding: 10px 20px; cursor: pointer; }
     button:hover { background: #0056b3; }
+    #admin { margin: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 10px; background: #f9f9f9; }
   </style>
 </head>
 <body>
   <div id="container">
-    <!-- Login/Register -->
+    <!-- Login -->
     <div id="auth">
       <h2>Login</h2>
-      <form id="loginForm" method="POST" action="/login" onsubmit="setTimeout(()=>location.reload(),500)">
+      <form method="POST" action="/login">
         <input type="text" name="username" placeholder="Username" required>
         <input type="password" name="password" placeholder="Password" required>
         <button type="submit">Login</button>
-      </form>
-
-      <h2>Register</h2>
-      <form id="registerForm" method="POST" action="/register" onsubmit="setTimeout(()=>location.reload(),500)">
-        <input type="text" name="username" placeholder="Choose a username" required>
-        <input type="password" name="password" placeholder="Choose a password" required>
-        <button type="submit">Create Account</button>
       </form>
     </div>
 
@@ -46,26 +40,42 @@
         <button>Send</button>
       </form>
       <button onclick="window.location='/logout'" style="margin:10px;">Logout</button>
+
+      <!-- Admin panel (only visible to owner) -->
+      <div id="admin" style="display:none;">
+        <h3>Add User</h3>
+        <form id="addUserForm">
+          <input type="text" name="username" placeholder="New username" required>
+          <input type="password" name="password" placeholder="New password" required>
+          <button type="submit">Add User</button>
+        </form>
+        <div id="adminMsg"></div>
+      </div>
     </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io({ withCredentials: true });
+    const socket = io();
     const form = document.getElementById('form');
     const input = document.getElementById('input');
     const messages = document.getElementById('messages');
     const auth = document.getElementById('auth');
     const chat = document.getElementById('chat');
+    const adminPanel = document.getElementById('admin');
+    const addUserForm = document.getElementById('addUserForm');
+    const adminMsg = document.getElementById('adminMsg');
 
     let myUsername = null;
 
     socket.on('set username', (username) => {
       myUsername = username;
-      console.log("Server says username:", username);
-      if (username && username !== 'Anonymous') {
+      if (username) {
         auth.style.display = 'none';
         chat.style.display = 'flex';
+        if (username === 'owner') {
+          adminPanel.style.display = 'block';
+        }
       } else {
         auth.style.display = 'flex';
         chat.style.display = 'none';
@@ -103,6 +113,19 @@
       messages.appendChild(item);
       messages.scrollTop = messages.scrollHeight;
     }
+
+    // Admin add user
+    addUserForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(addUserForm);
+      const res = await fetch('/adduser', {
+        method: 'POST',
+        body: new URLSearchParams(formData)
+      });
+      const text = await res.text();
+      adminMsg.textContent = text;
+      addUserForm.reset();
+    });
   </script>
 </body>
 </html>
