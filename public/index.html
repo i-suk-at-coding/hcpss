@@ -24,14 +24,14 @@
     <!-- Login/Register -->
     <div id="auth">
       <h2>Login</h2>
-      <form id="loginForm" method="POST" action="/login">
+      <form id="loginForm" method="POST" action="/login" onsubmit="setTimeout(()=>location.reload(),500)">
         <input type="text" name="username" placeholder="Username" required>
         <input type="password" name="password" placeholder="Password" required>
         <button type="submit">Login</button>
       </form>
 
       <h2>Register</h2>
-      <form id="registerForm" method="POST" action="/register">
+      <form id="registerForm" method="POST" action="/register" onsubmit="setTimeout(()=>location.reload(),500)">
         <input type="text" name="username" placeholder="Choose a username" required>
         <input type="password" name="password" placeholder="Choose a password" required>
         <button type="submit">Create Account</button>
@@ -51,7 +51,7 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
+    const socket = io({ withCredentials: true });
     const form = document.getElementById('form');
     const input = document.getElementById('input');
     const messages = document.getElementById('messages');
