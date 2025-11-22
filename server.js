@@ -13,11 +13,16 @@ const io = socketIo(server);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Session middleware
+// Session middleware with cookie config
 const sessionMiddleware = session({
   secret: 'supersecret',
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  cookie: {
+    secure: false,   // set true if serving over HTTPS
+    httpOnly: true,
+    sameSite: 'lax'
+  }
 });
 app.use(sessionMiddleware);
 
@@ -41,6 +46,7 @@ let chatHistory = [];
 
 // Always serve index.html
 app.get('/', (req, res) => {
+  console.log('Session user:', req.session.user); // debug
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
