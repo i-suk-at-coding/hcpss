@@ -88,25 +88,78 @@ function spawnPlayer(username) {
 }
 
 function stepPlayer(p, dt) {
-  p.vx = 0;
-  if (p.input.left) { p.vx = -MOVE_SPEED; p.dir = -1; }
-  if (p.input.right) { p.vx = MOVE_SPEED; p.dir = 1; }
-  if (p.input.up && p.onGround) { p.vy = JUMP_VELOCITY; p.onGround = false; }
+  const ACCEL = 1500;
+  const FRICTION = 1200;
+  const MAX_SPEED = 300;
+  const JUMP_VELOCITY = -600;
+  const COYOTE_TIME = 0.1; // seconds
+  const JUMP_BUFFER = 0.15; // seconds
+
+  // Track timers
+  p.coyoteTimer = (p.onGround ? COYOTE_TIME : Math.max(0, (p.coyoteTimer || 0) - dt));
+  p.jumpBuffer = Math.max(0, (p.jumpBuffer || 0) - dt);
+
+  // Horizontal movement
+  if (p.input.left) {
+    p.vx -= ACCEL * dt;
+    p.dir = -1;
+  } else if (p.input.right) {
+    p.vx += ACCEL * dt;
+    p.dir = 1;
+  } else {
+    // friction
+    if (p.vx > 0) {
+      p.vx = Math.max(0, p.vx - FRICTION * dt);
+    } else if (p.vx < 0) {
+      p.vx = Math.min(0, p.vx + FRICTION * dt);
+    }
+  }
+  // clamp speed
+  p.vx = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, p.vx));
+
+  // Jump input
+  if (p.input.up) {
+    p.jumpBuffer = JUMP_BUFFER;
+  }
+
+  if (p.jumpBuffer > 0 && p.coyoteTimer > 0) {
+    p.vy = JUMP_VELOCITY;
+    p.onGround = false;
+    p.coyoteTimer = 0;
+    p.jumpBuffer = 0;
+  }
+
+  // Gravity
   p.vy += GRAVITY * dt;
+
+  // Integrate
   p.x += p.vx * dt;
   p.y += p.vy * dt;
 
+  // Collision resolution
   const w = 40, h = 60;
+  p.onGround = false;
+
+  // World bounds
   if (p.x < 0) p.x = 0;
   if (p.x + w > WORLD.width) p.x = WORLD.width - w;
-  if (p.y + h > WORLD.height) { p.y = WORLD.height - h; p.vy = 0; p.onGround = true; }
+  if (p.y + h > WORLD.height) {
+    p.y = WORLD.height - h;
+    p.vy = 0;
+    p.onGround = true;
+  }
 
-  p.onGround = false;
+  // Platforms
   for (const plat of WORLD.platforms) {
     const collision = aabbResolve(p, w, h, plat);
-    if (collision === 'top') { p.vy = 0; p.onGround = true; }
+    if (collision === 'top') {
+      p.vy = 0;
+      p.onGround = true;
+      p.coyoteTimer = COYOTE_TIME;
+    }
   }
 }
+
 
 function aabbResolve(p, pw, ph, plat) {
   const ax1 = p.x, ay1 = p.y, ax2 = p.x + pw, ay2 = p.y + ph;
