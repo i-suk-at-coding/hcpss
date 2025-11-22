@@ -7,19 +7,25 @@ const socketIo = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
 
 // Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Session middleware with cookie config
+// Session middleware
 const sessionMiddleware = session({
   secret: 'supersecret',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,   // must be false if not using HTTPS
+    secure: false,   // true only if HTTPS
     httpOnly: true,
     sameSite: 'lax'
   }
@@ -46,7 +52,7 @@ let chatHistory = [];
 
 // Always serve index.html
 app.get('/', (req, res) => {
-  console.log('Session user:', req.session.user); // debug
+  console.log('Session user:', req.session.user);
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
