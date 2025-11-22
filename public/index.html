@@ -2,132 +2,143 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Owner Chat</title>
+  <title>Platformer + Chat</title>
   <style>
-    body { font-family: "Segoe UI", sans-serif; background: #f0f2f5; margin: 0; padding: 0; }
-    #container { max-width: 600px; margin: auto; height: 100vh; background: #fff; display: flex; flex-direction: column; }
-    #auth { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-    #auth form { display: flex; flex-direction: column; gap: 10px; width: 80%; max-width: 300px; margin-bottom: 20px; }
-    #chat { flex: 1; display: none; flex-direction: column; }
-    #messages { flex: 1; list-style: none; margin: 0; padding: 15px; overflow-y: auto; }
-    #messages li { margin: 10px 0; padding: 10px 15px; border-radius: 20px; max-width: 70%; word-wrap: break-word; }
-    #messages li.self { background: #dcf8c6; margin-left: auto; text-align: right; }
-    #messages li.other { background: #e9f5ff; margin-right: auto; }
-    #form { display: flex; border-top: 1px solid #ddd; padding: 10px; }
-    #input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
-    button { margin-left: 10px; background: #007bff; color: white; border: none; border-radius: 20px; padding: 10px 20px; cursor: pointer; }
-    button:hover { background: #0056b3; }
-    #admin { margin: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 10px; background: #f9f9f9; }
+    body { margin: 0; display: flex; height: 100vh; background: #111; color: #eee; font-family: sans-serif; }
+    #left { flex: 1; display: flex; align-items: center; justify-content: center; }
+    #game { width: 100%; height: 100%; }
+    #canvas { background: #222; border: 1px solid #333; }
+    #right { width: 320px; display: flex; flex-direction: column; border-left: 1px solid #333; }
+    #messages { flex: 1; list-style: none; margin: 0; padding: 10px; overflow-y: auto; }
+    #messages li { margin: 6px 0; padding: 6px 8px; border-radius: 8px; background: #1f2937; }
+    #messages li.self { background: #064e3b; }
+    #chatForm { display: flex; gap: 6px; padding: 10px; border-top: 1px solid #333; }
+    #chatInput { flex: 1; padding: 6px; border: 1px solid #333; border-radius: 6px; background: #111; color: #eee; }
+    button { background: #3b82f6; color: #fff; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+    button:hover { background: #2563eb; }
   </style>
 </head>
 <body>
-  <div id="container">
-    <!-- Login -->
-    <div id="auth">
-      <h2>Login</h2>
-      <form method="POST" action="/login">
-        <input type="text" name="username" placeholder="Username" required>
-        <input type="password" name="password" placeholder="Password" required>
-        <button type="submit">Login</button>
-      </form>
+  <div id="left">
+    <div id="game">
+      <canvas id="canvas" width="900" height="600"></canvas>
     </div>
-
-    <!-- Chat -->
-    <div id="chat">
-      <ul id="messages"></ul>
-      <form id="form">
-        <input id="input" autocomplete="off" placeholder="Type a message..." />
-        <button>Send</button>
-      </form>
-      <button onclick="window.location='/logout'" style="margin:10px;">Logout</button>
-
-      <!-- Admin panel (only visible to owner) -->
-      <div id="admin" style="display:none;">
-        <h3>Add User</h3>
-        <form id="addUserForm">
-          <input type="text" name="username" placeholder="New username" required>
-          <input type="password" name="password" placeholder="New password" required>
-          <button type="submit">Add User</button>
-        </form>
-        <div id="adminMsg"></div>
-      </div>
-    </div>
+  </div>
+  <div id="right">
+    <ul id="messages"></ul>
+    <form id="chatForm">
+      <input id="chatInput" autocomplete="off" placeholder="Type a message..." />
+      <button>Send</button>
+    </form>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // IMPORTANT: include cookies
-    const socket = io({ withCredentials: true });
-
-    const form = document.getElementById('form');
-    const input = document.getElementById('input');
+    const socket = io();
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
     const messages = document.getElementById('messages');
-    const auth = document.getElementById('auth');
-    const chat = document.getElementById('chat');
-    const adminPanel = document.getElementById('admin');
-    const addUserForm = document.getElementById('addUserForm');
-    const adminMsg = document.getElementById('adminMsg');
+    const chatForm = document.getElementById('chatForm');
+    const chatInput = document.getElementById('chatInput');
 
     let myUsername = null;
+    let world = null;
+    let players = {};
+    const SIZE = { w: 40, h: 60 };
 
-    socket.on('set username', (username) => {
-      myUsername = username;
-      if (username) {
-        auth.style.display = 'none';
-        chat.style.display = 'flex';
-        if (username === 'owner') {
-          adminPanel.style.display = 'block';
-        }
-      } else {
-        auth.style.display = 'flex';
-        chat.style.display = 'none';
-      }
+    // Auth handshake
+    socket.on('auth', ({ username }) => { myUsername = username; });
+
+    // World and initial players
+    socket.on('world', (payload) => {
+      world = payload.world;
+      players = payload.players || {};
     });
 
-    form.addEventListener('submit', (e) => {
+    // Player join/leave
+    socket.on('player join', ({ username, state }) => { players[username] = state; });
+    socket.on('player leave', ({ username }) => { delete players[username]; });
+
+    // State updates
+    socket.on('state', (serverPlayers) => { players = serverPlayers; });
+
+    // Input
+    const input = { left: false, right: false, up: false };
+    const keymap = {
+      ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up',
+      a: 'left', d: 'right', w: 'up', ' ': 'up'
+    };
+    window.addEventListener('keydown', (e) => {
+      const k = keymap[e.key];
+      if (!k) return;
+      if (!input[k]) { input[k] = true; socket.emit('input', input); }
+    });
+    window.addEventListener('keyup', (e) => {
+      const k = keymap[e.key];
+      if (!k) return;
+      input[k] = false; socket.emit('input', input);
+    });
+
+    // Chat
+    chatForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      if (input.value) {
-        socket.emit('chat message', input.value);
-        input.value = '';
-      }
+      if (!chatInput.value.trim()) return;
+      socket.emit('chat message', chatInput.value.trim());
+      chatInput.value = '';
     });
 
     socket.on('chat history', (history) => {
-      history.forEach((msg) => addMessage(msg));
+      messages.innerHTML = '';
+      history.forEach(addMessage);
     });
-
-    socket.on('chat message', (msg) => {
-      addMessage(msg);
-    });
+    socket.on('chat message', addMessage);
 
     function addMessage(msg) {
-      const item = document.createElement('li');
-      const localTime = new Date(msg.time).toLocaleString([], {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      item.textContent = `[${localTime}] ${msg.user}: ${msg.text}`;
-      if (msg.user === myUsername) {
-        item.classList.add('self');
-      } else {
-        item.classList.add('other');
-      }
-      messages.appendChild(item);
+      const li = document.createElement('li');
+      li.textContent = `[${new Date(msg.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}] ${msg.user}: ${msg.text}`;
+      if (msg.user === myUsername) li.classList.add('self');
+      messages.appendChild(li);
       messages.scrollTop = messages.scrollHeight;
     }
 
-    // Admin add user
-    addUserForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const formData = new FormData(addUserForm);
-      const res = await fetch('/adduser', {
-        method: 'POST',
-        body: new URLSearchParams(formData)
-      });
-      const text = await res.text();
-      adminMsg.textContent = text;
-      addUserForm.reset();
-    });
+    // Rendering
+    function render() {
+      if (!world) return requestAnimationFrame(render);
+
+      const me = players[myUsername];
+      const camX = Math.max(0, Math.min((me ? me.x : 0) - canvas.width / 2, world.width - canvas.width));
+      const camY = Math.max(0, Math.min((me ? me.y : 0) - canvas.height / 2, world.height - canvas.height));
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(-camX, -camY);
+
+      // Background
+      ctx.fillStyle = '#222';
+      ctx.fillRect(0, 0, world.width, world.height);
+
+      // Platforms
+      ctx.fillStyle = '#374151';
+      for (const plat of world.platforms) {
+        ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+      }
+
+      // Players
+      for (const [u, p] of Object.entries(players)) {
+        ctx.fillStyle = p.color || '#a3e635';
+        ctx.fillRect(p.x, p.y, SIZE.w, SIZE.h);
+        ctx.fillStyle = '#000';
+        const eyeX = p.dir === 1 ? p.x + SIZE.w - 12 : p.x + 4;
+        ctx.fillRect(eyeX, p.y + 16, 8, 8);
+        ctx.fillStyle = '#e5e7eb';
+        ctx.font = '12px Segoe UI';
+        ctx.fillText(u, p.x, p.y - 6);
+      }
+
+      ctx.restore();
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
   </script>
 </body>
 </html>
