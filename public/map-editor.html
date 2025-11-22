@@ -16,9 +16,16 @@
   <div id="toolbar">
     <button id="saveBtn">Save Map</button>
     <button id="loadBtn">Load Map</button>
+    Rotation: <input id="rotationInput" type="range" min="0" max="360" value="0">
+    Material:
+    <select id="materialSelect">
+      <option value="normal">Normal</option>
+      <option value="ice">Ice</option>
+      <option value="lava">Lava</option>
+      <option value="bounce">Bounce</option>
+      <option value="sticky">Sticky</option>
+    </select>
   </div>
-  <canvas id="canvas" width="1200" height="700"></canvas>
-  <textarea id="output" placeholder="Map JSON will appear here..."></textarea>
 
   <script>
     const canvas = document.getElementById('canvas');
