@@ -19,7 +19,7 @@ const sessionMiddleware = session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,   // set true if serving over HTTPS
+    secure: false,   // must be false if not using HTTPS
     httpOnly: true,
     sameSite: 'lax'
   }
@@ -85,6 +85,7 @@ app.get('/logout', (req, res) => {
 // Socket.IO
 io.on('connection', (socket) => {
   const username = socket.request.session?.user || 'Anonymous';
+  console.log('Socket connected, user:', username);
   socket.emit('set username', username);
 
   // Send chat history
