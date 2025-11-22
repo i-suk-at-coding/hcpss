@@ -56,7 +56,9 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
+    // IMPORTANT: include cookies
+    const socket = io({ withCredentials: true });
+
     const form = document.getElementById('form');
     const input = document.getElementById('input');
     const messages = document.getElementById('messages');
