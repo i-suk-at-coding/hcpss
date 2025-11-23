@@ -25,6 +25,7 @@
     #players li { font-size:13px; margin:4px 0; display:flex; align-items:center; }
     .dot { width:8px; height:8px; border-radius:50%; margin-right:6px; background:#3b82f6; }
 
+    /* Chat box scrolls internally */
     #messages { flex:1; list-style:none; margin:0; padding:10px; overflow-y:auto; overflow-x:hidden; background:#121212; }
     #messages li { margin:6px 0; padding:8px 10px; border-radius:8px; background:#1f2937; font-size:13px; word-wrap:break-word; overflow-wrap:break-word; white-space:pre-wrap; max-width:260px; }
     #messages li.self { background:#064e3b; }
@@ -64,7 +65,6 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // Socket + DOM refs
     const socket = io();
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -76,19 +76,13 @@
     const countLabel = document.getElementById('count');
     document.getElementById('editorBtn').addEventListener('click', () => { window.location.href = '/map-editor.html'; });
 
-    // Responsive canvas: match parent container (#game)
+    // Responsive canvas
     function resizeCanvas() {
       const parent = canvas.parentElement;
       const w = parent.clientWidth;
       const h = parent.clientHeight;
-      if (w > 0 && h > 0) {
-        canvas.width = w;
-        canvas.height = h;
-      } else {
-        // Fallback for hidden/zero-size parent
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-      }
+      canvas.width = w > 0 ? w : window.innerWidth;
+      canvas.height = h > 0 ? h : window.innerHeight;
     }
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
@@ -172,7 +166,7 @@
       li.appendChild(time);
       if (msg.user === myUsername) li.classList.add('self');
       messages.appendChild(li);
-      messages.scrollTop = messages.scrollHeight;
+      messages.scrollTop = messages.scrollHeight; // keep chat anchored
     }
 
     function updatePlayerList() {
@@ -205,8 +199,8 @@
       if (!world) { requestAnimationFrame(render); return; }
 
       const me = players[myUsername];
-      const camX = Math.max(0, Math.min((me ? me.x : 0) - canvas.width/2, world.width - canvas.width));
-      const camY = Math.max(0, Math.min((me ? me.y : 0) - canvas.height/2, world.height - canvas.height));
+      const camX = Math.max(0, Math.min((me ? me.x : 0) - canvas.width / 2, world.width - canvas.width));
+      const camY = Math.max(0, Math.min((me ? me.y : 0) - canvas.height / 2, world.height - canvas.height));
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.save();
@@ -224,10 +218,12 @@
         ctx.fillStyle = p.color || '#a3e635';
         ctx.fillRect(p.x, p.y, SIZE.w, SIZE.h);
 
+        // Simple eye
         ctx.fillStyle = '#000';
         const eyeX = p.dir === 1 ? p.x + SIZE.w - 12 : p.x + 4;
         ctx.fillRect(eyeX, p.y + 16, 8, 8);
 
+        // Name
         ctx.fillStyle = '#e5e7eb';
         ctx.font = '12px Segoe UI';
         ctx.fillText(u, p.x, p.y - 6);
