@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Map Editor</title>
- <style>
+  <style>
     body{margin:0;height:100vh;display:flex;font-family:"Segoe UI",sans-serif;background:#0f0f0f;color:#eee}
     #editorArea{flex:1;display:flex;flex-direction:column;background:#1a1a1a}
     #canvas{flex:1;background:#222;border-right:1px solid #333}
@@ -12,8 +12,7 @@
     #editorOutput{flex:1;width:100%;border:none;resize:none;padding:12px;font-family:monospace;font-size:13px;background:#0f0f0f;color:#eee;overflow:auto;white-space:pre}
     #copyBtn{background:#3b82f6;border:none;color:#fff;padding:8px;cursor:pointer;font-size:13px}
     #copyBtn:hover{background:#2563eb}
-</style>
-
+  </style>
 </head>
 <body>
   <div id="editorArea">
@@ -27,14 +26,17 @@
 
   <script>
     const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
     const output = document.getElementById('editorOutput');
     const copyBtn = document.getElementById('copyBtn');
 
-    // Example: pretty-print JSON
+    // Example world data
     const world = { platforms: [
       { x: 0, y: 660, w: 1200, h: 40, rotation: 0, material: "normal" },
       { x: 150, y: 520, w: 250, h: 20, rotation: 0, material: "ice" }
     ]};
+
+    // Pretty-print JSON
     output.value = JSON.stringify(world.platforms, null, 2);
 
     copyBtn.addEventListener('click', () => {
@@ -47,9 +49,30 @@
     function resizeCanvas() {
       canvas.width = window.innerWidth - document.getElementById('jsonPanel').offsetWidth;
       canvas.height = window.innerHeight;
+      drawGrid();
     }
-    resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
+
+    // Draw a simple grid so the editor area is visible
+    function drawGrid() {
+      ctx.fillStyle = '#222';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#444';
+      for (let x = 0; x < canvas.width; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+
+    resizeCanvas();
   </script>
 </body>
 </html>
