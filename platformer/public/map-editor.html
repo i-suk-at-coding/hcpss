@@ -12,9 +12,35 @@
     #editorOutput{flex:1;width:100%;border:none;resize:none;padding:12px;font-family:monospace;font-size:13px;background:#0f0f0f;color:#eee;overflow:auto;white-space:pre}
     #copyBtn{background:#3b82f6;border:none;color:#fff;padding:8px;cursor:pointer;font-size:13px}
     #copyBtn:hover{background:#2563eb}
+    #toolbox{width:200px;background:#1a1a1a;color:#eee;padding:12px;border-right:1px solid #333;display:flex;flex-direction:column;gap:8px}
+    #toolbox h3{margin:0 0 8px;font-size:14px}
+    #toolbox label{font-size:13px;display:flex;flex-direction:column;gap:4px}
+    #toolbox select,#toolbox input{padding:4px;background:#111;color:#eee;border:1px solid #333;border-radius:4px}
+    #toolbox button{background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:6px;cursor:pointer;font-size:13px}
+    #toolbox button:hover{background:#2563eb}
   </style>
 </head>
 <body>
+    <div id="toolbox">
+    <h3>Tools</h3>
+    <label>
+      Material:
+      <select id="materialSelect">
+        <option value="normal">Normal</option>
+        <option value="ice">Ice</option>
+        <option value="lava">Lava</option>
+        <option value="bounce">Bounce</option>
+        <option value="sticky">Sticky</option>
+      </select>
+    </label>
+    <label>
+      Rotation:
+      <input type="number" id="rotationInput" value="0" step="5">°
+    </label>
+    <button id="addBtn">Add Platform</button>
+    <button id="deleteBtn">Delete Selected</button>
+    <button id="saveBtn">Save JSON</button>
+  </div>
   <div id="editorArea">
     <canvas id="canvas"></canvas>
   </div>
