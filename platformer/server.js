@@ -7,11 +7,6 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// Call once at start
-resizeCanvas();
-
-// Update when window resizes
-window.addEventListener('resize', resizeCanvas);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
