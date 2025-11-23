@@ -190,3 +190,16 @@
         p.y = my - dragOffsetY;
         redraw();
       }
+          });
+
+    canvas.addEventListener('mouseup', () => {
+      dragHandle = null;
+      draggingPlatform = false;
+    });
+
+    // Initial canvas sizing and draw
+    resizeCanvas();
+  </script>
+</body>
+</html>
+
