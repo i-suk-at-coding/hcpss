@@ -13,11 +13,9 @@
     label { font-size:12px; opacity:0.9; }
     select, input[type="range"] { background:#111; color:#eee; border:1px solid #333; }
 
-    /* Canvas fills remaining vertical space between toolbar and output */
     #canvas { flex:1; display:block; background:#222; cursor:crosshair; }
 
-    /* Output JSON box */
-    #output { height:120px; margin-top:8px; background:#111; color:#eee; border:1px solid #333; }
+    #output { height:120px; margin-top:8px; background:#111; color:#eee; border:1px solid #333; font-family:monospace; }
   </style>
 </head>
 <body>
@@ -41,7 +39,6 @@
   <textarea id="output" placeholder="Map JSON will appear here..."></textarea>
 
   <script>
-    // Canvas + controls
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const output = document.getElementById('output');
@@ -49,20 +46,15 @@
     const materialSelect = document.getElementById('materialSelect');
     document.getElementById('backBtn').onclick = () => { window.location.href = '/'; };
 
-    // Responsive canvas: match parent and account for toolbar/output
+    // Resize canvas to fill available space
     function resizeCanvas() {
       const parent = canvas.parentElement;
       const toolbarH = document.getElementById('toolbar').offsetHeight;
       const outputH = document.getElementById('output').offsetHeight;
       const w = parent.clientWidth;
       const h = parent.clientHeight - toolbarH - outputH;
-      if (w > 0 && h > 0) {
-        canvas.width = w;
-        canvas.height = h;
-      } else {
-        canvas.width = window.innerWidth;
-        canvas.height = Math.max(0, window.innerHeight - toolbarH - outputH);
-      }
+      canvas.width = w > 0 ? w : window.innerWidth;
+      canvas.height = h > 0 ? h : window.innerHeight - toolbarH - outputH;
     }
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
@@ -106,7 +98,6 @@
     function snap(v) { return Math.round(v / grid) * grid; }
 
     function hitTest(mx, my) {
-      // Transform point into each platform's local space and do a box test
       for (let i=platforms.length-1;i>=0;i--) {
         const p = platforms[i];
         const cx = p.x + p.w/2, cy = p.y + p.h/2;
@@ -130,9 +121,7 @@
         dragOffset.y = my - selected.y;
         rotationInput.value = selected.rotation || 0;
         materialSelect.value = selected.material || 'normal';
-
-        // Right click deletes
-        if (e.button===2) {
+        if (e.button===2) { // right click deletes
           platforms = platforms.filter(p=>p!==selected);
           selected=null;
           dragging=false;
@@ -162,32 +151,26 @@
     rotationInput.addEventListener('input', () => {
       if (selected) selected.rotation = parseInt(rotationInput.value, 10) || 0;
     });
-
     materialSelect.addEventListener('change', () => {
       if (selected) selected.material = materialSelect.value;
     });
 
     // Save / Load
     document.getElementById('saveBtn').onclick=()=>{
-      output.value=JSON.stringify(platforms,null,2);
+      const json = JSON.stringify(platforms,null,2);
+      output.value = json;
+      output.scrollTop = 0; // show from top
     };
 
     document.getElementById('loadBtn').onclick=()=>{
       try{
         const data = JSON.parse(output.value);
-        platforms = (Array.isArray(data) ? data : []);
+        platforms = Array.isArray(data) ? data : [];
         selected = null;
       }catch(e){
         alert('Invalid JSON');
       }
     };
-
-    // Optional: push map live to server (requires server listener uncommented)
-    // const socket = io();
-    // document.getElementById('saveBtn').onclick=()=>{
-    //   output.value=JSON.stringify(platforms,null,2);
-    //   socket.emit('update map', platforms);
-    // };
   </script>
   <script src="/socket.io/socket.io.js"></script>
 </body>
