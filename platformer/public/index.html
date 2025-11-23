@@ -39,7 +39,7 @@
       <span id="count">Players: 0</span>
     </div>
     <div id="game">
-      <canvas id="canvas" width="900" height="600"></canvas>
+      <canvas id="canvas"></canvas>
     </div>
   </div>
   <div id="right">
@@ -56,6 +56,13 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
     const socket = io();
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -66,14 +73,6 @@
     const usernameLabel = document.getElementById('username');
     const countLabel = document.getElementById('count');
     document.getElementById('editorBtn').addEventListener('click', () => { window.location.href = '/map-editor.html'; });
-    
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
 
     let myUsername = null;
     let world = null;
