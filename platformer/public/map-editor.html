@@ -1,177 +1,55 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Platformer Map Editor</title>
-  <style>
-    html, body { margin:0; padding:0; height:100%; overflow:hidden; }
-    body { display:flex; flex-direction:column; height:100vh; background:#111; color:#eee; font-family:"Segoe UI",sans-serif; }
+  <meta charset="UTF-8">
+  <title>Map Editor</title>
+ <style>
+    body{margin:0;height:100vh;display:flex;font-family:"Segoe UI",sans-serif;background:#0f0f0f;color:#eee}
+    #editorArea{flex:1;display:flex;flex-direction:column;background:#1a1a1a}
+    #canvas{flex:1;background:#222;border-right:1px solid #333}
+    #jsonPanel{width:400px;background:#121212;border-left:1px solid #333;display:flex;flex-direction:column}
+    #jsonPanel h3{margin:0;padding:12px;font-size:14px;background:#1f1f1f;border-bottom:1px solid #333}
+    #editorOutput{flex:1;width:100%;border:none;resize:none;padding:12px;font-family:monospace;font-size:13px;background:#0f0f0f;color:#eee;overflow:auto;white-space:pre}
+    #copyBtn{background:#3b82f6;border:none;color:#fff;padding:8px;cursor:pointer;font-size:13px}
+    #copyBtn:hover{background:#2563eb}
+</style>
 
-    #toolbar { background:#1a1a1a; padding:8px; display:flex; gap:8px; align-items:center; border-bottom:1px solid #333; }
-    button { background:#3b82f6; color:#fff; border:none; border-radius:4px; padding:6px 10px; cursor:pointer; }
-    button:hover { background:#2563eb; }
-    label { font-size:12px; opacity:0.9; }
-    select, input[type="range"] { background:#111; color:#eee; border:1px solid #333; }
-
-    #canvas { flex:1; display:block; background:#222; cursor:crosshair; }
-
-    #output { height:120px; margin-top:8px; background:#111; color:#eee; border:1px solid #333; font-family:monospace; }
-  </style>
 </head>
 <body>
-  <div id="toolbar">
-    <button id="backBtn">Back to Game</button>
-    <button id="saveBtn">Save Map</button>
-    <button id="loadBtn">Load Map</button>
-    <label>Rotation: <input id="rotationInput" type="range" min="0" max="360" value="0"></label>
-    <label>Material:
-      <select id="materialSelect">
-        <option value="normal">Normal</option>
-        <option value="ice">Ice</option>
-        <option value="lava">Lava</option>
-        <option value="bounce">Bounce</option>
-        <option value="sticky">Sticky</option>
-      </select>
-    </label>
+  <div id="editorArea">
+    <canvas id="canvas"></canvas>
   </div>
-
-  <canvas id="canvas"></canvas>
-  <textarea id="output" placeholder="Map JSON will appear here..."></textarea>
+  <div id="jsonPanel">
+    <h3>JSON Output</h3>
+    <textarea id="editorOutput" readonly></textarea>
+    <button id="copyBtn">Copy JSON</button>
+  </div>
 
   <script>
     const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const output = document.getElementById('output');
-    const rotationInput = document.getElementById('rotationInput');
-    const materialSelect = document.getElementById('materialSelect');
-    document.getElementById('backBtn').onclick = () => { window.location.href = '/'; };
+    const output = document.getElementById('editorOutput');
+    const copyBtn = document.getElementById('copyBtn');
 
-    // Resize canvas to fill available space
+    // Example: pretty-print JSON
+    const world = { platforms: [
+      { x: 0, y: 660, w: 1200, h: 40, rotation: 0, material: "normal" },
+      { x: 150, y: 520, w: 250, h: 20, rotation: 0, material: "ice" }
+    ]};
+    output.value = JSON.stringify(world.platforms, null, 2);
+
+    copyBtn.addEventListener('click', () => {
+      output.select();
+      document.execCommand('copy');
+      alert('JSON copied to clipboard!');
+    });
+
+    // Resize canvas to fill left side
     function resizeCanvas() {
-      const parent = canvas.parentElement;
-      const toolbarH = document.getElementById('toolbar').offsetHeight;
-      const outputH = document.getElementById('output').offsetHeight;
-      const w = parent.clientWidth;
-      const h = parent.clientHeight - toolbarH - outputH;
-      canvas.width = w > 0 ? w : window.innerWidth;
-      canvas.height = h > 0 ? h : window.innerHeight - toolbarH - outputH;
+      canvas.width = window.innerWidth - document.getElementById('jsonPanel').offsetWidth;
+      canvas.height = window.innerHeight;
     }
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-    new ResizeObserver(resizeCanvas).observe(canvas.parentElement);
-
-    // Editor state
-    let platforms = [];
-    let selected = null;
-    let dragging = false;
-    let dragOffset = {x:0,y:0};
-    const grid = 25;
-
-    // Render loop
-    function render() {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      ctx.fillStyle='#222';
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-
-      // Grid
-      ctx.strokeStyle='#333';
-      ctx.lineWidth = 1;
-      for(let x=0;x<canvas.width;x+=grid){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
-      for(let y=0;y<canvas.height;y+=grid){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
-
-      // Platforms
-      platforms.forEach(p=>{
-        ctx.save();
-        ctx.translate(p.x + p.w/2, p.y + p.h/2);
-        ctx.rotate((p.rotation||0) * Math.PI/180);
-        const colors = { normal:"#888", ice:"#3b82f6", lava:"#ef4444", bounce:"#facc15", sticky:"#10b981" };
-        ctx.fillStyle = (p===selected) ? '#60a5fa' : (colors[p.material] || '#888');
-        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-        ctx.restore();
-      });
-
-      requestAnimationFrame(render);
-    }
-    render();
-
-    // Helpers
-    function snap(v) { return Math.round(v / grid) * grid; }
-
-    function hitTest(mx, my) {
-      for (let i=platforms.length-1;i>=0;i--) {
-        const p = platforms[i];
-        const cx = p.x + p.w/2, cy = p.y + p.h/2;
-        const ang = (p.rotation||0) * Math.PI/180;
-        const cos = Math.cos(-ang), sin = Math.sin(-ang);
-        const lx = (mx - cx) * cos - (my - cy) * sin;
-        const ly = (mx - cx) * sin + (my - cy) * cos;
-        if (lx >= -p.w/2 && lx <= p.w/2 && ly >= -p.h/2 && ly <= p.h/2) return p;
-      }
-      return null;
-    }
-
-    // Mouse events
-    canvas.addEventListener('mousedown', e=>{
-      const rect=canvas.getBoundingClientRect();
-      const mx=e.clientX-rect.left, my=e.clientY-rect.top;
-      selected = hitTest(mx, my);
-      if (selected) {
-        dragging = true;
-        dragOffset.x = mx - selected.x;
-        dragOffset.y = my - selected.y;
-        rotationInput.value = selected.rotation || 0;
-        materialSelect.value = selected.material || 'normal';
-        if (e.button===2) { // right click deletes
-          platforms = platforms.filter(p=>p!==selected);
-          selected=null;
-          dragging=false;
-        }
-      } else {
-        const newPlat = { x: snap(mx), y: snap(my), w: 100, h: 20, rotation: 0, material: 'normal' };
-        platforms.push(newPlat);
-        selected = newPlat;
-        rotationInput.value = 0;
-        materialSelect.value = 'normal';
-      }
-    });
-
-    canvas.addEventListener('mousemove', e=>{
-      if (!dragging || !selected) return;
-      const rect=canvas.getBoundingClientRect();
-      const mx=e.clientX-rect.left, my=e.clientY-rect.top;
-      selected.x = snap(mx - dragOffset.x);
-      selected.y = snap(my - dragOffset.y);
-    });
-
-    canvas.addEventListener('mouseup', ()=>{ dragging=false; });
-    canvas.addEventListener('mouseleave', ()=>{ dragging=false; });
-    canvas.addEventListener('contextmenu', e=>e.preventDefault());
-
-    // Controls
-    rotationInput.addEventListener('input', () => {
-      if (selected) selected.rotation = parseInt(rotationInput.value, 10) || 0;
-    });
-    materialSelect.addEventListener('change', () => {
-      if (selected) selected.material = materialSelect.value;
-    });
-
-    // Save / Load
-    document.getElementById('saveBtn').onclick=()=>{
-      const json = JSON.stringify(platforms,null,2);
-      output.value = json;
-      output.scrollTop = 0; // show from top
-    };
-
-    document.getElementById('loadBtn').onclick=()=>{
-      try{
-        const data = JSON.parse(output.value);
-        platforms = Array.isArray(data) ? data : [];
-        selected = null;
-      }catch(e){
-        alert('Invalid JSON');
-      }
-    };
   </script>
-  <script src="/socket.io/socket.io.js"></script>
 </body>
 </html>
