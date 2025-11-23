@@ -184,17 +184,26 @@
       const me = players[myUsername];
       const camX = Math.max(0, Math.min((me ? me.x : 0) - canvas.width/2, world.width - canvas.width));
       const camY = Math.max(0, Math.min((me ? me.y : 0) - canvas.height/2, world.height - canvas.height));
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.save();
       ctx.translate(-camX, -camY);
+
+      // Background
       ctx.fillStyle = '#222';
       ctx.fillRect(0, 0, world.width, world.height);
+
+      // Platforms
       for (const plat of world.platforms) drawPlatform(plat);
+
+      // Players
       for (const [u, p] of Object.entries(players)) {
         ctx.fillStyle = p.color || '#a3e635';
         ctx.fillRect(p.x, p.y, SIZE.w, SIZE.h);
+
+        // Eyes
         ctx.fillStyle = '#000';
-        const eyeX = p.dir === 1 ? p.x + SIZE.w - 12 : p.x + 4.color
+        const eyeX = p.dir === 1 ? p.x + SIZE.w - 12 : p.x + 4;
         ctx.fillRect(eyeX, p.y + 16, 8, 8);
 
         // Name tag
@@ -208,6 +217,10 @@
     }
 
     requestAnimationFrame(render);
+  </script>
+</body>
+</html>
+
   </script>
 </body>
 </html>
