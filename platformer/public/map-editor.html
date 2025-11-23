@@ -63,6 +63,10 @@
 
     let world = { platforms: [] };
     let selectedIndex = null;
+    let dragHandle = null;
+    let draggingPlatform = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
 
     function resizeCanvas() {
       canvas.width = window.innerWidth - document.getElementById('jsonPanel').offsetWidth - document.getElementById('toolbox').offsetWidth;
@@ -70,6 +74,15 @@
       redraw();
     }
     window.addEventListener('resize', resizeCanvas);
+
+    function getHandles(p) {
+      return [
+        {x: p.x, y: p.y},                         // top-left
+        {x: p.x + p.w, y: p.y},                   // top-right
+        {x: p.x, y: p.y + p.h},                   // bottom-left
+        {x: p.x + p.w, y: p.y + p.h}              // bottom-right
+      ];
+    }
 
     function redraw() {
       ctx.fillStyle = '#222';
@@ -85,12 +98,16 @@
                      : p.material === 'sticky' ? '#10b981'
                      : '#888';
         ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+        ctx.restore();
+
         if (i === selectedIndex) {
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 2;
-          ctx.strokeRect(-p.w/2, -p.h/2, p.w, p.h);
+          ctx.strokeRect(p.x, p.y, p.w, p.h);
+          const handles = getHandles(p);
+          ctx.fillStyle = '#fff';
+          handles.forEach(h => ctx.fillRect(h.x - 4, h.y - 4, 8, 8));
         }
-        ctx.restore();
       });
 
       output.value = JSON.stringify(world.platforms, null, 2);
@@ -125,18 +142,51 @@
       alert('JSON copied to clipboard!');
     });
 
-    canvas.addEventListener('click', (e) => {
+    canvas.addEventListener('mousedown', (e) => {
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
-      selectedIndex = world.platforms.findIndex(p =>
-        mx >= p.x && mx <= p.x + p.w &&
-        my >= p.y && my <= p.y + p.h
-      );
-      redraw();
+
+      if (selectedIndex !== null) {
+        const p = world.platforms[selectedIndex];
+        const handles = getHandles(p);
+        const hit = handles.findIndex(h => Math.abs(mx - h.x) < 6 && Math.abs(my - h.y) < 6);
+        if (hit !== -1) {
+          dragHandle = hit;
+          return;
+        }
+        if (mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h) {
+          draggingPlatform = true;
+          dragOffsetX = mx - p.x;
+          dragOffsetY = my - p.y;
+        }
+      } else {
+        // select platform if clicked
+        selectedIndex = world.platforms.findIndex(p =>
+          mx >= p.x && mx <= p.x + p.w &&
+          my >= p.y && my <= p.y + p.h
+        );
+        redraw();
+      }
     });
 
-    resizeCanvas();
-  </script>
-</body>
-</html>
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      if (dragHandle !== null && selectedIndex !== null) {
+        const p = world.platforms[selectedIndex];
+        switch (dragHandle) {
+          case 0: p.w = (p.x + p.w) - mx; p.h = (p.y + p.h) - my; p.x = mx; p.y = my; break;
+          case 1: p.w = mx - p.x; p.h = (p.y + p.h) - my; p.y = my; break;
+          case 2: p.w = (p.x + p.w) - mx; p.h = my - p.y; p.x = mx; break;
+          case 3: p.w = mx - p.x; p.h = my - p.y; break;
+        }
+        redraw();
+      } else if (draggingPlatform && selectedIndex !== null) {
+        const p = world.platforms[selectedIndex];
+        p.x = mx - dragOffsetX;
+        p.y = my - dragOffsetY;
+        redraw();
+      }
