@@ -6,14 +6,6 @@ const socketIo = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-
-// Function to resize canvas to fit parent container
-function resizeCanvas() {
-  canvas.width = canvas.parentElement.clientWidth;
-  canvas.height = canvas.parentElement.clientHeight;
-}
 
 // Call once at start
 resizeCanvas();
