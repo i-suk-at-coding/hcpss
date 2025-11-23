@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Laser Tag Online</title>
+  <style>
+    html,body{margin:0;padding:0;height:100%}body{margin:0;background:#0d0f14;color:#eaeaea;font-family:"Segoe UI",sans-serif;display:flex;flex-direction:column;height:100vh}#hud{height:42px;background:#151922;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid #2a2f3a}#hud .left{display:flex;gap:10px;align-items:center}#hud .right{display:flex;gap:16px;align-items:center}#hud .pill{padding:4px 8px;border-radius:999px;background:#232a36;font-size:12px}#game{flex:1;display:flex;align-items:center;justify-content:center}#canvas{background:#0f1218;border:1px solid #222}#scoreRed{color:#ef4444}#scoreBlue{color:#3b82f6}#controls{font-size:12px;opacity:0.8}
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div class="left">
+      <div class="pill">Laser Tag Online</div>
+      <div id="name" class="pill"></div>
+      <div id="team" class="pill"></div>
+    </div>
+    <div class="right">
+      <div id="scoreRed" class="pill">Red: 0</div>
+      <div id="scoreBlue" class="pill">Blue: 0</div>
+      <div id="controls" class="pill">WASD to move • Mouse to aim • Left-click to fire</div>
+    </div>
+  </div>
+  <div id="game">
+    <canvas id="canvas" width="1200" height="800"></canvas>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // Configure this to point at your separate server if needed:
+    // const socket = io('https://your-laser-server.example.com', { transports: ['websocket'] });
+    const socket = io();
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let me = null;
+    let players = [];
+    let lasers = [];
+    let scores = { red:0, blue:0 };
+
+    socket.on('init', (payload) => {
+      me = payload.me;
+      scores = payload.scores || scores;
+      document.getElementById('name').textContent = me.name;
+      document.getElementById('team').textContent = 'Team: ' + (me.team === 'red' ? 'Red' : 'Blue');
+    });
+    socket.on('player_join', (list) => { players = list; });
+    socket.on('player_leave', (list) => { players = list; });
+    socket.on('state', (s) => {
+      players = s.players || players;
+      lasers = s.lasers || lasers;
+      scores = s.scores || scores;
+      document.getElementById('scoreRed').textContent = 'Red: ' + (scores.red||0);
+      document.getElementById('scoreBlue').textContent = 'Blue: ' + (scores.blue||0);
+    });
+    socket.on('score', ({scores:s}) => {
+      scores = s;
+      document.getElementById('scoreRed').textContent = 'Red: ' + (scores.red||0);
+      document.getElementById('scoreBlue').textContent = 'Blue: ' + (scores.blue||0);
+    });
+
+    const input = { up:false,down:false,left:false,right:false };
+    const keymap = { w:'up', ArrowUp:'up', s:'down', ArrowDown:'down', a:'left', ArrowLeft:'left', d:'right', ArrowRight:'right' };
+    window.addEventListener('keydown', (e) => { const k = keymap[e.key]; if (!k) return; if (!input[k]) { input[k]=true; socket.emit('input', input); } });
+    window.addEventListener('keyup', (e) => { const k = keymap[e.key]; if (!k) return; input[k]=false; socket.emit('input', input); });
+
+    // Aim + fire
+    let mouse = { x:0, y:0, down:false };
+    canvas.addEventListener('mousemove', (e) => {
+      const r = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top;
+      if (!me) return;
+      const my = players.find(p => p.id === me.id);
+      const px = my ? my.x : canvas.width/2, py = my ? my.y : canvas.height/2;
+      socket.emit('aim', { dx: mouse.x - px, dy: mouse.y - py });
+    });
+    canvas.addEventListener('mousedown', () => { mouse.down = true; socket.emit('fire', true); });
+    window.addEventListener('mouseup', () => { mouse.down = false; socket.emit('fire', false); });
+
+    function drawPlayers() {
+      players.forEach(p => {
+        const color = p.team === 'red' ? '#ef4444' : '#3b82f6';
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 18, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#0d0f14'; ctx.lineWidth = 2; ctx.stroke();
+        // health ring
+        const hpPct = Math.max(0, Math.min(1, (p.hp||0)/100));
+        ctx.strokeStyle = hpPct > 0.5 ? '#10b981' : (hpPct > 0.25 ? '#f59e0b' : '#ef4444');
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 22, -Math.PI/2, -Math.PI/2 + hpPct*2*Math.PI);
+        ctx.stroke();
+        // name
+        ctx.fillStyle = '#eaeaea'; ctx.font = '12px Segoe UI';
+        ctx.textAlign = 'center'; ctx.fillText(p.name, p.x, p.y - 28);
+        if (!p.alive) { ctx.fillStyle = '#bbbbbb'; ctx.fillText('respawning...', p.x, p.y + 30); }
+      });
+    }
+
+    function drawLasers() {
+      lasers.forEach(l => {
+        const color = l.team === 'red' ? '#ef4444' : '#3b82f6';
+        ctx.strokeStyle = color; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x - l.vx*0.06, l.y - l.vy*0.06); ctx.stroke();
+      });
+    }
+
+    function drawWorld() {
+      ctx.fillStyle = '#0f1218'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      // Simple bases
+      ctx.fillStyle = 'rgba(239,68,68,0.08)'; ctx.fillRect(0,0,280,200);
+      ctx.fillStyle = 'rgba(59,130,246,0.08)'; ctx.fillRect(canvas.width-280,canvas.height-200,280,200);
+      // Obstacles
+      ctx.fillStyle = '#1f2430';
+      [[350,160,120,40],[900,220,180,40],[600,420,160,40],[300,620,160,40],[1100,640,140,40]].forEach(([x,y,w,h]) => { ctx.fillRect(x,y,w,h); });
+    }
+
+    function render() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      drawWorld();
+      drawLasers();
+      drawPlayers();
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
