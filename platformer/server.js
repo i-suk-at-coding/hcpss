@@ -17,12 +17,23 @@ const WORLD = {
   width: 1200,
   height: 700,
   platforms: [
-    { x: 0,   y: 660, w: 1200, h: 40, rotation: 0,   material: "normal" },
-    { x: 150, y: 520, w: 250,  h: 20, rotation: 0,   material: "ice" },
-    { x: 480, y: 450, w: 240,  h: 20, rotation: 12,  material: "bounce" },
-    { x: 800, y: 380, w: 280,  h: 20, rotation: -10, material: "lava" },
-    { x: 300, y: 300, w: 180,  h: 20, rotation: 0,   material: "sticky" }
-  ]
+  {
+    "x": 86,
+    "y": 338,
+    "w": 200,
+    "h": 20,
+    "rotation": 0,
+    "material": "bounce"
+  },
+  {
+    "x": 298,
+    "y": 331,
+    "w": 200,
+    "h": 20,
+    "rotation": 0,
+    "material": "bounce"
+  }
+]
 };
 
 let players = {};
