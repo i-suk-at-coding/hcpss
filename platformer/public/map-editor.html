@@ -5,6 +5,12 @@
   <title>Map Editor</title>
   <style>
     body{margin:0;height:100vh;display:flex;font-family:"Segoe UI",sans-serif;background:#0f0f0f;color:#eee}
+    #toolbox{width:200px;background:#1a1a1a;color:#eee;padding:12px;border-right:1px solid #333;display:flex;flex-direction:column;gap:8px}
+    #toolbox h3{margin:0 0 8px;font-size:14px}
+    #toolbox label{font-size:13px;display:flex;flex-direction:column;gap:4px}
+    #toolbox select,#toolbox input{padding:4px;background:#111;color:#eee;border:1px solid #333;border-radius:4px}
+    #toolbox button{background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:6px;cursor:pointer;font-size:13px}
+    #toolbox button:hover{background:#2563eb}
     #editorArea{flex:1;display:flex;flex-direction:column;background:#1a1a1a}
     #canvas{flex:1;background:#222;border-right:1px solid #333}
     #jsonPanel{width:400px;background:#121212;border-left:1px solid #333;display:flex;flex-direction:column}
@@ -12,19 +18,12 @@
     #editorOutput{flex:1;width:100%;border:none;resize:none;padding:12px;font-family:monospace;font-size:13px;background:#0f0f0f;color:#eee;overflow:auto;white-space:pre}
     #copyBtn{background:#3b82f6;border:none;color:#fff;padding:8px;cursor:pointer;font-size:13px}
     #copyBtn:hover{background:#2563eb}
-    #toolbox{width:200px;background:#1a1a1a;color:#eee;padding:12px;border-right:1px solid #333;display:flex;flex-direction:column;gap:8px}
-    #toolbox h3{margin:0 0 8px;font-size:14px}
-    #toolbox label{font-size:13px;display:flex;flex-direction:column;gap:4px}
-    #toolbox select,#toolbox input{padding:4px;background:#111;color:#eee;border:1px solid #333;border-radius:4px}
-    #toolbox button{background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:6px;cursor:pointer;font-size:13px}
-    #toolbox button:hover{background:#2563eb}
   </style>
 </head>
 <body>
-    <div id="toolbox">
+  <div id="toolbox">
     <h3>Tools</h3>
-    <label>
-      Material:
+    <label>Material:
       <select id="materialSelect">
         <option value="normal">Normal</option>
         <option value="ice">Ice</option>
@@ -33,17 +32,18 @@
         <option value="sticky">Sticky</option>
       </select>
     </label>
-    <label>
-      Rotation:
+    <label>Rotation:
       <input type="number" id="rotationInput" value="0" step="5">°
     </label>
     <button id="addBtn">Add Platform</button>
     <button id="deleteBtn">Delete Selected</button>
     <button id="saveBtn">Save JSON</button>
   </div>
+
   <div id="editorArea">
     <canvas id="canvas"></canvas>
   </div>
+
   <div id="jsonPanel">
     <h3>JSON Output</h3>
     <textarea id="editorOutput" readonly></textarea>
@@ -55,15 +55,69 @@
     const ctx = canvas.getContext('2d');
     const output = document.getElementById('editorOutput');
     const copyBtn = document.getElementById('copyBtn');
+    const materialSelect = document.getElementById('materialSelect');
+    const rotationInput = document.getElementById('rotationInput');
+    const addBtn = document.getElementById('addBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const saveBtn = document.getElementById('saveBtn');
 
-    // Example world data
-    const world = { platforms: [
-      { x: 0, y: 660, w: 1200, h: 40, rotation: 0, material: "normal" },
-      { x: 150, y: 520, w: 250, h: 20, rotation: 0, material: "ice" }
-    ]};
+    let world = { platforms: [] };
+    let selectedIndex = null;
 
-    // Pretty-print JSON
-    output.value = JSON.stringify(world.platforms, null, 2);
+    function resizeCanvas() {
+      canvas.width = window.innerWidth - document.getElementById('jsonPanel').offsetWidth - document.getElementById('toolbox').offsetWidth;
+      canvas.height = window.innerHeight;
+      redraw();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function redraw() {
+      ctx.fillStyle = '#222';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      world.platforms.forEach((p, i) => {
+        ctx.save();
+        ctx.translate(p.x + p.w/2, p.y + p.h/2);
+        ctx.rotate(p.rotation * Math.PI/180);
+        ctx.fillStyle = p.material === 'ice' ? '#3b82f6'
+                     : p.material === 'lava' ? '#ef4444'
+                     : p.material === 'bounce' ? '#facc15'
+                     : p.material === 'sticky' ? '#10b981'
+                     : '#888';
+        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+        if (i === selectedIndex) {
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(-p.w/2, -p.h/2, p.w, p.h);
+        }
+        ctx.restore();
+      });
+
+      output.value = JSON.stringify(world.platforms, null, 2);
+    }
+
+    addBtn.addEventListener('click', () => {
+      const newPlat = {
+        x: 100, y: 100, w: 200, h: 20,
+        rotation: parseInt(rotationInput.value, 10) || 0,
+        material: materialSelect.value
+      };
+      world.platforms.push(newPlat);
+      selectedIndex = world.platforms.length - 1;
+      redraw();
+    });
+
+    deleteBtn.addEventListener('click', () => {
+      if (selectedIndex !== null) {
+        world.platforms.splice(selectedIndex, 1);
+        selectedIndex = null;
+        redraw();
+      }
+    });
+
+    saveBtn.addEventListener('click', () => {
+      output.value = JSON.stringify(world.platforms, null, 2);
+    });
 
     copyBtn.addEventListener('click', () => {
       output.select();
@@ -71,32 +125,16 @@
       alert('JSON copied to clipboard!');
     });
 
-    // Resize canvas to fill left side
-    function resizeCanvas() {
-      canvas.width = window.innerWidth - document.getElementById('jsonPanel').offsetWidth;
-      canvas.height = window.innerHeight;
-      drawGrid();
-    }
-    window.addEventListener('resize', resizeCanvas);
-
-    // Draw a simple grid so the editor area is visible
-    function drawGrid() {
-      ctx.fillStyle = '#222';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = '#444';
-      for (let x = 0; x < canvas.width; x += 40) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-      }
-      for (let y = 0; y < canvas.height; y += 40) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
-    }
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      selectedIndex = world.platforms.findIndex(p =>
+        mx >= p.x && mx <= p.x + p.w &&
+        my >= p.y && my <= p.y + p.h
+      );
+      redraw();
+    });
 
     resizeCanvas();
   </script>
