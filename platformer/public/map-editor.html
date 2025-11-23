@@ -61,10 +61,16 @@
     const deleteBtn = document.getElementById('deleteBtn');
     const saveBtn = document.getElementById('saveBtn');
 
+    const worldWidth = 4000;
+    const worldHeight = 2000;
+    let cameraX = 0;
+    let cameraY = 0;
+
     let world = { platforms: [] };
     let selectedIndex = null;
     let dragHandle = null;
     let draggingPlatform = false;
+    let rotatingPlatform = false;
     let dragOffsetX = 0;
     let dragOffsetY = 0;
 
@@ -88,9 +94,13 @@
       ctx.fillStyle = '#222';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      // Floor
+      ctx.fillStyle = '#444';
+      ctx.fillRect(-cameraX, worldHeight - 40 - cameraY, worldWidth, 40);
+
       world.platforms.forEach((p, i) => {
         ctx.save();
-        ctx.translate(p.x + p.w/2, p.y + p.h/2);
+        ctx.translate(p.x - cameraX + p.w/2, p.y - cameraY + p.h/2);
         ctx.rotate(p.rotation * Math.PI/180);
         ctx.fillStyle = p.material === 'ice' ? '#3b82f6'
                      : p.material === 'lava' ? '#ef4444'
@@ -103,10 +113,21 @@
         if (i === selectedIndex) {
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 2;
-          ctx.strokeRect(p.x, p.y, p.w, p.h);
+          ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
           const handles = getHandles(p);
           ctx.fillStyle = '#fff';
-          handles.forEach(h => ctx.fillRect(h.x - 4, h.y - 4, 8, 8));
+          handles.forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
+
+          // rotation handle
+          const cx = p.x - cameraX + p.w/2;
+          const cy = p.y - cameraY + p.h/2;
+          const hx = cx;
+          const hy = cy - p.h/2 - 40;
+          ctx.fillStyle = '#0ff';
+          ctx.beginPath();
+          ctx.arc(hx, hy, 6, 0, Math.PI*2);
+          ctx.fill();
+          p.rotationHandle = {x: hx + cameraX, y: hy + cameraY};
         }
       });
 
@@ -115,7 +136,7 @@
 
     addBtn.addEventListener('click', () => {
       const newPlat = {
-        x: 100, y: 100, w: 200, h: 20,
+        x: cameraX + 100, y: cameraY + 100, w: 200, h: 20,
         rotation: parseInt(rotationInput.value, 10) || 0,
         material: materialSelect.value
       };
@@ -144,16 +165,16 @@
 
     canvas.addEventListener('mousedown', (e) => {
       const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
+      const mx = e.clientX - rect.left + cameraX;
+      const my = e.clientY - rect.top + cameraY;
 
       if (selectedIndex !== null) {
         const p = world.platforms[selectedIndex];
         const handles = getHandles(p);
         const hit = handles.findIndex(h => Math.abs(mx - h.x) < 6 && Math.abs(my - h.y) < 6);
-        if (hit !== -1) {
-          dragHandle = hit;
-          return;
+        if (hit !== -1) { dragHandle = hit; return; }
+        if (p.rotationHandle && Math.hypot(mx - p.rotationHandle.x, my - p.rotationHandle.y) < 10) {
+          rotatingPlatform = true; return;
         }
         if (mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h) {
           draggingPlatform = true;
@@ -161,10 +182,9 @@
           dragOffsetY = my - p.y;
         }
       } else {
-        // select platform if clicked
         selectedIndex = world.platforms.findIndex(p =>
           mx >= p.x && mx <= p.x + p.w &&
-          my >= p.y && my <= p.y + p.h
+          my >= p.y && my <= p.y + p.h 
         );
         redraw();
       }
@@ -172,8 +192,8 @@
 
     canvas.addEventListener('mousemove', (e) => {
       const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
+      const mx = e.clientX - rect.left + cameraX;
+      const my = e.clientY - rect.top + cameraY;
 
       if (dragHandle !== null && selectedIndex !== null) {
         const p = world.platforms[selectedIndex];
@@ -184,22 +204,39 @@
           case 3: p.w = mx - p.x; p.h = my - p.y; break;
         }
         redraw();
+      } else if (rotatingPlatform && selectedIndex !== null) {
+        const p = world.platforms[selectedIndex];
+        const cx = p.x + p.w/2;
+        const cy = p.y + p.h/2;
+        const angle = Math.atan2(my - cy, mx - cx) * 180/Math.PI;
+        p.rotation = angle;
+        redraw();
       } else if (draggingPlatform && selectedIndex !== null) {
         const p = world.platforms[selectedIndex];
         p.x = mx - dragOffsetX;
         p.y = my - dragOffsetY;
         redraw();
       }
-          });
+    });
 
     canvas.addEventListener('mouseup', () => {
       dragHandle = null;
       draggingPlatform = false;
+      rotatingPlatform = false;
     });
 
-    // Initial canvas sizing and draw
+    // Camera scrolling with arrow keys/WASD
+    document.addEventListener('keydown', (e) => {
+      const step = 50;
+      if (e.key === 'ArrowLeft' || e.key === 'a') cameraX = Math.max(0, cameraX - step);
+      if (e.key === 'ArrowRight' || e.key === 'd') cameraX = Math.min(worldWidth - canvas.width, cameraX + step);
+      if (e.key === 'ArrowUp' || e.key === 'w') cameraY = Math.max(0, cameraY - step);
+      if (e.key === 'ArrowDown' || e.key === 's') cameraY = Math.min(worldHeight - canvas.height, cameraY + step);
+      redraw();
+    });
+
+    // Initialize
     resizeCanvas();
   </script>
 </body>
 </html>
-
