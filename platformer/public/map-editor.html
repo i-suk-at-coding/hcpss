@@ -2,15 +2,26 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Map Editor (Stable)</title>
+  <title>Map Editor (Stable + Materials)</title>
   <style>
     body { margin:0; height:100vh; display:flex; font-family:"Segoe UI",sans-serif; background:#0f0f0f; color:#eee; }
-    #toolbox { width:220px; background:#1a1a1a; padding:12px; border-right:1px solid #333; display:flex; flex-direction:column; gap:8px; }
+    #toolbox { width:240px; background:#1a1a1a; padding:12px; border-right:1px solid #333; display:flex; flex-direction:column; gap:10px; }
+    #toolbox h3 { margin:0 0 8px; font-size:15px; }
+    #toolbox label { font-size:13px; display:flex; flex-direction:column; gap:4px; }
+    #toolbox select, #toolbox input { padding:6px; background:#111; color:#eee; border:1px solid #333; border-radius:4px; }
+    #toolbox button { background:#3b82f6; color:#fff; border:none; border-radius:6px; padding:8px; cursor:pointer; font-size:13px; }
+    #toolbox button:hover { background:#2563eb; }
     #editorArea { flex:1; display:flex; flex-direction:column; background:#1a1a1a; }
     #canvas { flex:1; background:#222; }
-    #jsonPanel { width:400px; background:#121212; border-left:1px solid #333; display:flex; flex-direction:column; }
+    #jsonPanel { width:360px; background:#121212; border-left:1px solid #333; display:flex; flex-direction:column; }
+    #jsonPanel h3 { margin:0; padding:12px; font-size:14px; background:#1f1f1f; border-bottom:1px solid #333; }
     #editorOutput { flex:1; width:100%; border:none; resize:none; padding:12px; font-family:monospace; font-size:13px; background:#0f0f0f; color:#eee; overflow:auto; white-space:pre; }
+    #copyBtn { background:#3b82f6; border:none; color:#fff; padding:8px; cursor:pointer; font-size:13px; }
+    #copyBtn:hover { background:#2563eb; }
     #infoPanel { width:260px; background:#1a1a1a; padding:12px; border-left:1px solid #333; overflow-y:auto; }
+    #infoPanel h3 { margin:0 0 8px; font-size:14px; }
+    #infoPanel ul { list-style:none; padding:0; margin:0; }
+    #infoPanel li { font-size:13px; margin:6px 0; }
     #loading { position:fixed; top:0; left:0; right:0; bottom:0; background:#0f0f0f; color:#fff; display:flex; align-items:center; justify-content:center; font-size:20px; z-index:9999; }
   </style>
 </head>
@@ -18,10 +29,25 @@
   <div id="loading">Loading map editor...</div>
 
   <div id="toolbox">
+    <h3>Tools</h3>
+    <label>Material:
+      <select id="materialSelect">
+        <option value="normal">Normal</option>
+        <option value="ice">Ice</option>
+        <option value="lava">Lava</option>
+        <option value="bounce">Bounce</option>
+        <option value="sticky">Sticky</option>
+      </select>
+    </label>
+    <label>Rotation:
+      <input type="number" id="rotationInput" value="0" step="5">°
+    </label>
     <button id="addBtn">Add Platform</button>
     <button id="deleteBtn">Delete Selected</button>
     <button id="saveBtn">Save JSON</button>
-    <input type="file" id="loadFile" accept="application/json">
+    <label>Load Map:
+      <input type="file" id="loadFile" accept="application/json">
+    </label>
   </div>
 
   <div id="editorArea">
@@ -42,6 +68,7 @@
       <li>Drag corner handles to resize.</li>
       <li>Drag cyan circle above block to rotate.</li>
       <li>Use arrow keys/WASD to scroll camera.</li>
+      <li>Choose material & rotation before adding new blocks.</li>
     </ul>
   </div>
 
@@ -54,6 +81,8 @@
     const saveBtn = document.getElementById('saveBtn');
     const copyBtn = document.getElementById('copyBtn');
     const loadFile = document.getElementById('loadFile');
+    const materialSelect = document.getElementById('materialSelect');
+    const rotationInput = document.getElementById('rotationInput');
 
     const worldWidth = 4000, worldHeight = 2000;
     let cameraX = 0, cameraY = 0;
@@ -85,7 +114,11 @@
         ctx.save();
         ctx.translate(p.x - cameraX + p.w/2, p.y - cameraY + p.h/2);
         ctx.rotate(p.rotation * Math.PI/180);
-        ctx.fillStyle = '#888';
+        ctx.fillStyle = p.material === 'ice' ? '#3b82f6'
+                     : p.material === 'lava' ? '#ef4444'
+                     : p.material === 'bounce' ? '#facc15'
+                     : p.material === 'sticky' ? '#10b981'
+                     : '#888';
         ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
         ctx.restore();
 
@@ -109,7 +142,11 @@
     }
 
     addBtn.addEventListener('click', () => {
-      const newPlat = {x: cameraX+100, y: cameraY+100, w:200, h:20, rotation:0, material:"normal"};
+      const newPlat = {
+        x: cameraX+100, y: cameraY+100, w:200, h:20,
+        rotation: parseInt(rotationInput.value, 10) || 0,
+        material: materialSelect.value
+      };
       world.platforms.push(newPlat);
       selectedIndex = world.platforms.length - 1;
     });
@@ -131,7 +168,7 @@
       alert('JSON copied!');
     });
 
-    loadFile.addEventListener('change', (e) => {
+        loadFile.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -178,7 +215,7 @@
         switch (dragHandle) {
           case 0: p.w = (p.x+p.w)-mx; p.h = (p.y+p.h)-my; p.x = mx; p.y = my; break;
           case 1: p.w = mx-p.x; p.h = (p.y+p.h)-my; p.y = my; break;
-                    case 2: p.w = (p.x+p.w)-mx; p.h = my-p.y; p.x = mx; break;
+          case 2: p.w = (p.x+p.w)-mx; p.h = my-p.y; p.x = mx; break;
           case 3: p.w = mx-p.x; p.h = my-p.y; break;
         }
       } else if (rotatingPlatform && selectedIndex !== null) {
