@@ -73,40 +73,44 @@
   </div>
 
   <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const output = document.getElementById('editorOutput');
-    const addBtn = document.getElementById('addBtn');
-    const deleteBtn = document.getElementById('deleteBtn');
-    const saveBtn = document.getElementById('saveBtn');
-    const copyBtn = document.getElementById('copyBtn');
-    const loadFile = document.getElementById('loadFile');
-    const materialSelect = document.getElementById('materialSelect');
-    const rotationInput = document.getElementById('rotationInput');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const output = document.getElementById('editorOutput');
+  const addBtn = document.getElementById('addBtn');
+  const deleteBtn = document.getElementById('deleteBtn');
+  const saveBtn = document.getElementById('saveBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const loadFile = document.getElementById('loadFile');
+  const materialSelect = document.getElementById('materialSelect');
+  const rotationInput = document.getElementById('rotationInput');
 
-    const worldWidth = 4000, worldHeight = 2000;
-    let cameraX = 0, cameraY = 0;
-    let world = { platforms: [] };
-    let selectedIndex = null;
-    let dragHandle = null, draggingPlatform = false, rotatingPlatform = false;
-    let dragOffsetX = 0, dragOffsetY = 0;
+  const worldWidth = 4000, worldHeight = 2000;
+  let cameraX = 0, cameraY = 0;
+  let world = { platforms: [] };
+  let selectedIndices = []; // array for selection
+  let dragHandle = null, draggingPlatform = false, rotatingPlatform = false;
+  let dragOffsetX = 0, dragOffsetY = 0;
 
-    function resizeCanvas() {
-      canvas.width = window.innerWidth - document.getElementById('jsonPanel').offsetWidth - document.getElementById('toolbox').offsetWidth - document.getElementById('infoPanel').offsetWidth;
-      canvas.height = window.innerHeight;
-    }
-    window.addEventListener('resize', resizeCanvas);
+  function resizeCanvas() {
+    canvas.width =
+      window.innerWidth -
+      document.getElementById('jsonPanel').offsetWidth -
+      document.getElementById('toolbox').offsetWidth -
+      document.getElementById('infoPanel').offsetWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeCanvas);
 
-    function getHandles(p) {
-      return [
-        {x: p.x, y: p.y},
-        {x: p.x + p.w, y: p.y},
-        {x: p.x, y: p.y + p.h},
-        {x: p.x + p.w, y: p.y + p.h}
-      ];
-    }
+  function getHandles(p) {
+    return [
+      { x: p.x, y: p.y },
+      { x: p.x + p.w, y: p.y },
+      { x: p.x, y: p.y + p.h },
+      { x: p.x + p.w, y: p.y + p.h }
+    ];
+  }
 
-    function redraw() {
+  function redraw() {
     ctx.fillStyle = '#222';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -116,202 +120,238 @@
 
     // Draw all platforms
     world.platforms.forEach((p, i) => {
-        ctx.save();
-        ctx.translate(p.x - cameraX + p.w/2, p.y - cameraY + p.h/2);
-        ctx.rotate(p.rotation * Math.PI/180);
-        ctx.fillStyle = p.material === 'ice' ? '#3b82f6'
-                     : p.material === 'lava' ? '#ef4444'
-                     : p.material === 'bounce' ? '#facc15'
-                     : p.material === 'sticky' ? '#10b981'
-                     : '#888';
-        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-        ctx.restore();
+      ctx.save();
+      ctx.translate(p.x - cameraX + p.w / 2, p.y - cameraY + p.h / 2);
+      ctx.rotate((p.rotation * Math.PI) / 180);
+      ctx.fillStyle =
+        p.material === 'ice'
+          ? '#3b82f6'
+          : p.material === 'lava'
+          ? '#ef4444'
+          : p.material === 'bounce'
+          ? '#facc15'
+          : p.material === 'sticky'
+          ? '#10b981'
+          : '#888';
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
 
-        // Single‑block handles if selected
-        if (selectedIndices.includes(i)) {
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
+      // Single‑block handles if selected
+      if (selectedIndices.includes(i)) {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
 
-            // Corner handles
-            const handles = getHandles(p);
-            ctx.fillStyle = '#fff';
-            handles.forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
+        // Corner handles
+        const handles = getHandles(p);
+        ctx.fillStyle = '#fff';
+        handles.forEach(h =>
+          ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8)
+        );
 
-            // Rotation handle
-            const cx = p.x + p.w/2;
-            const hy = p.y - 40;
-            ctx.fillStyle = '#0ff';
-            ctx.beginPath();
-            ctx.arc(cx - cameraX, hy - cameraY, 6, 0, Math.PI*2);
-            ctx.fill();
-            p.rotationHandle = {x: cx, y: hy};
-        }
+        // Rotation handle
+        const cx = p.x + p.w / 2;
+        const hy = p.y - 40;
+        ctx.fillStyle = '#0ff';
+        ctx.beginPath();
+        ctx.arc(cx - cameraX, hy - cameraY, 6, 0, Math.PI * 2);
+        ctx.fill();
+        p.rotationHandle = { x: cx, y: hy };
+      }
     });
 
     // Group box if multiple selected
     if (selectedIndices.length > 1) {
-        const bounds = getGroupBounds();
-        ctx.strokeStyle = '#0ff';
-        ctx.strokeRect(bounds.x - cameraX, bounds.y - cameraY, bounds.w, bounds.h);
+      const bounds = getGroupBounds();
+      ctx.strokeStyle = '#0ff';
+      ctx.strokeRect(
+        bounds.x - cameraX,
+        bounds.y - cameraY,
+        bounds.w,
+        bounds.h
+      );
 
-        // Group handles
-        const handles = [
-            {x: bounds.x, y: bounds.y},
-            {x: bounds.x + bounds.w, y: bounds.y},
-            {x: bounds.x, y: bounds.y + bounds.h},
-            {x: bounds.x + bounds.w, y: bounds.y + bounds.h}
-        ];
-        ctx.fillStyle = '#0ff';
-        handles.forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
+      // Group handles
+      const handles = [
+        { x: bounds.x, y: bounds.y },
+        { x: bounds.x + bounds.w, y: bounds.y },
+        { x: bounds.x, y: bounds.y + bounds.h },
+        { x: bounds.x + bounds.w, y: bounds.y + bounds.h }
+      ];
+      ctx.fillStyle = '#0ff';
+      handles.forEach(h =>
+        ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8)
+      );
     }
 
     // Marquee selection box
     if (selectingBox) {
-        const x = Math.min(selectStartX, selectCurrentX) - cameraX;
-        const y = Math.min(selectStartY, selectCurrentY) - cameraY;
-        const w = Math.abs(selectCurrentX - selectStartX);
-        const h = Math.abs(selectCurrentY - selectStartY);
-        ctx.strokeStyle = '#0ff';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x, y, w, h);
-        ctx.fillStyle = 'rgba(0,255,255,0.2)';
-        ctx.fillRect(x, y, w, h);
+      const x = Math.min(selectStartX, selectCurrentX) - cameraX;
+      const y = Math.min(selectStartY, selectCurrentY) - cameraY;
+      const w = Math.abs(selectCurrentX - selectStartX);
+      const h = Math.abs(selectCurrentY - selectStartY);
+      ctx.strokeStyle = '#0ff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(0,255,255,0.2)';
+      ctx.fillRect(x, y, w, h);
     }
 
     // Update JSON output
     output.value = JSON.stringify(world.platforms, null, 2);
-}
+  }
 
+  addBtn.addEventListener('click', () => {
+    const newPlat = {
+      x: cameraX + 100,
+      y: cameraY + 100,
+      w: 200,
+      h: 20,
+      rotation: parseInt(rotationInput.value, 10) || 0,
+      material: materialSelect.value
+    };
+    world.platforms.push(newPlat);
+    selectedIndices = [world.platforms.length - 1];
+  });
 
-    addBtn.addEventListener('click', () => {
-      const newPlat = {
-        x: cameraX+100, y: cameraY+100, w:200, h:20,
-        rotation: parseInt(rotationInput.value, 10) || 0,
-        material: materialSelect.value
-      };
-      world.platforms.push(newPlat);
-      selectedIndex = world.platforms.length - 1;
-    });
+  deleteBtn.addEventListener('click', () => {
+    if (selectedIndices.length > 0) {
+      world.platforms = world.platforms.filter(
+        (_, i) => !selectedIndices.includes(i)
+      );
+      selectedIndices = [];
+    }
+  });
 
-    deleteBtn.addEventListener('click', () => {
-      if (selectedIndex !== null) {
-        world.platforms.splice(selectedIndex, 1);
-        selectedIndex = null;
+  saveBtn.addEventListener('click', () => {
+    output.value = JSON.stringify(world.platforms, null, 2);
+  });
+
+  copyBtn.addEventListener('click', () => {
+    output.select();
+    document.execCommand('copy');
+    alert('JSON copied!');
+  });
+
+  loadFile.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try {
+        const data = JSON.parse(evt.target.result);
+        world.platforms = Array.isArray(data) ? data : data.platforms || [];
+        selectedIndices = [];
+      } catch (err) {
+        alert('Error loading map');
       }
-    });
+    };
+    reader.readAsText(file);
+  });
 
-    saveBtn.addEventListener('click', () => {
-      output.value = JSON.stringify(world.platforms, null, 2);
-    });
+  // Mouse events
+  // Extra state for marquee selection
+  let selectingBox = false;
+  let selectStartX = 0,
+    selectStartY = 0;
+  let selectCurrentX = 0,
+    selectCurrentY = 0;
 
-    copyBtn.addEventListener('click', () => {
-      output.select();
-      document.execCommand('copy');
-      alert('JSON copied!');
-    });
-
-      loadFile.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        try {
-          const data = JSON.parse(evt.target.result);
-          world.platforms = Array.isArray(data) ? data : data.platforms || [];
-          selectedIndex = null;
-        } catch (err) { alert("Error loading map"); }
-      };
-      reader.readAsText(file);
-    });
-
-    // Mouse events
-    // Extra state for marquee selection
-let selectingBox = false;
-let selectStartX = 0, selectStartY = 0;
-let selectCurrentX = 0, selectCurrentY = 0;
-
-canvas.addEventListener('mousedown', (e) => {
+  canvas.addEventListener('mousedown', e => {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left + cameraX;
     const my = e.clientY - rect.top + cameraY;
 
-    // ... your existing handle/rotation/drag logic here ...
-
     // If no block was hit, start marquee selection
-    const found = world.platforms.findIndex(p =>
-        mx >= p.x && mx <= p.x + p.w &&
-        my >= p.y && my <= p.y + p.h
+    const found = world.platforms.findIndex(
+      p => mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h
     );
     if (found === -1) {
-        selectingBox = true;
-        selectStartX = mx;
-        selectStartY = my;
-        selectCurrentX = mx;
-        selectCurrentY = my;
-        selectedIndices = []; // clear current selection until mouseup
+      selectingBox = true;
+      selectStartX = mx;
+      selectStartY = my;
+      selectCurrentX = mx;
+      selectCurrentY = my;
+      selectedIndices = []; // clear current selection until mouseup
     } else {
-        selectedIndex = found; // normal single selection
+      selectedIndices = [found]; // normal single selection
     }
-});
+  });
 
-canvas.addEventListener('mousemove', (e) => {
+  canvas.addEventListener('mousemove', e => {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left + cameraX;
     const my = e.clientY - rect.top + cameraY;
 
     if (selectingBox) {
-        selectCurrentX = mx;
-        selectCurrentY = my;
+      selectCurrentX = mx;
+      selectCurrentY = my;
     }
 
     // ... your existing drag/resize/rotate logic here ...
-});
+  });
 
-canvas.addEventListener('mouseup', () => {
+  canvas.addEventListener('mouseup', () => {
     if (selectingBox) {
-        selectingBox = false;
-        const x1 = Math.min(selectStartX, selectCurrentX);
-        const y1 = Math.min(selectStartY, selectCurrentY);
-        const x2 = Math.max(selectStartX, selectCurrentX);
-        const y2 = Math.max(selectStartY, selectCurrentY);
+      selectingBox = false;
+      const x1 = Math.min(selectStartX, selectCurrentX);
+      const y1 = Math.min(selectStartY, selectCurrentY);
+      const x2 = Math.max(selectStartX, selectCurrentX);
+      const y2 = Math.max(selectStartY, selectCurrentY);
 
-        // Select all blocks that intersect the box
-        selectedIndices = world.platforms
-            .map((p, i) => {
-                const intersects = !(p.x + p.w < x1 || p.x > x2 || p.y + p.h < y1 || p.y > y2);
-                return intersects ? i : null;
-            })
-            .filter(i => i !== null);
+      // Select all blocks that intersect the box
+      selectedIndices = world.platforms
+        .map((p, i) => {
+          const intersects = !(
+            p.x + p.w < x1 ||
+            p.x > x2 ||
+            p.y + p.h < y1 ||
+            p.y > y2
+          );
+          return intersects ? i : null;
+        })
+        .filter(i => i !== null);
     }
 
     dragHandle = null;
     draggingPlatform = false;
     rotatingPlatform = false;
-});
+  });
 
-
-    // Camera scrolling
-    document.addEventListener('keydown', (e) => {
-      const step = 50;
-      if (e.key === 'ArrowLeft' || e.key === 'a') cameraX = Math.max(0, cameraX - step);
-      if (e.key === 'ArrowRight' || e.key === 'd') cameraX = Math.min(worldWidth - canvas.width, cameraX + step);
-      if (e.key === 'ArrowUp' || e.key === 'w') cameraY = Math.max(0, cameraY - step);
-      if (e.key === 'ArrowDown' || e.key === 's') cameraY = Math.min(worldHeight - canvas.height, cameraY + step);
-    });
-
-    // Auto-update loop
-    function gameLoop() {
-      redraw();
-      requestAnimationFrame(gameLoop);
+  // Camera scrolling
+  document.addEventListener('keydown', e => {
+    const step = 50;
+    if (e.key === 'ArrowLeft' || e.key === 'a')
+        // Camera scrolling
+  document.addEventListener('keydown', e => {
+    const step = 50;
+    if (e.key === 'ArrowLeft' || e.key === 'a') {
+      cameraX = Math.max(0, cameraX - step);
     }
+    if (e.key === 'ArrowRight' || e.key === 'd') {
+      cameraX = Math.min(worldWidth - canvas.width, cameraX + step);
+    }
+    if (e.key === 'ArrowUp' || e.key === 'w') {
+      cameraY = Math.max(0, cameraY - step);
+    }
+    if (e.key === 'ArrowDown' || e.key === 's') {
+      cameraY = Math.min(worldHeight - canvas.height, cameraY + step);
+    }
+  });
 
-    // Initialize
-    window.addEventListener('load', () => {
-      document.getElementById('loading').style.display = 'none';
-      resizeCanvas();
-      gameLoop();
-    });
-  </script>
+  // Auto-update loop
+  function gameLoop() {
+    redraw();
+    requestAnimationFrame(gameLoop);
+  }
+
+  // Initialize
+  window.addEventListener('load', () => {
+    document.getElementById('loading').style.display = 'none';
+    resizeCanvas();
+    gameLoop();
+  });
+</script>
+
 </body>
 </html>
