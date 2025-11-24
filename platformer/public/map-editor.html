@@ -107,10 +107,15 @@
     }
 
     function redraw() {
-      ctx.fillStyle = '#222';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      world.platforms.forEach((p, i) => {
+    // Floor
+    ctx.fillStyle = '#444';
+    ctx.fillRect(-cameraX, worldHeight - 40 - cameraY, worldWidth, 40);
+
+    // Draw all platforms
+    world.platforms.forEach((p, i) => {
         ctx.save();
         ctx.translate(p.x - cameraX + p.w/2, p.y - cameraY + p.h/2);
         ctx.rotate(p.rotation * Math.PI/180);
@@ -122,24 +127,62 @@
         ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
         ctx.restore();
 
-        if (i === selectedIndex) {
-          ctx.strokeStyle = '#fff';
-          ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
-          const handles = getHandles(p);
-          ctx.fillStyle = '#fff';
-          handles.forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
-          const cx = p.x + p.w/2;
-          const hy = p.y - 40;
-          ctx.fillStyle = '#0ff';
-          ctx.beginPath();
-          ctx.arc(cx - cameraX, hy - cameraY, 6, 0, Math.PI*2);
-          ctx.fill();
-          p.rotationHandle = {x: cx, y: hy};
-        }
-      });
+        // Single‑block handles if selected
+        if (selectedIndices.includes(i)) {
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
 
-      output.value = JSON.stringify(world.platforms, null, 2);
+            // Corner handles
+            const handles = getHandles(p);
+            ctx.fillStyle = '#fff';
+            handles.forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
+
+            // Rotation handle
+            const cx = p.x + p.w/2;
+            const hy = p.y - 40;
+            ctx.fillStyle = '#0ff';
+            ctx.beginPath();
+            ctx.arc(cx - cameraX, hy - cameraY, 6, 0, Math.PI*2);
+            ctx.fill();
+            p.rotationHandle = {x: cx, y: hy};
+        }
+    });
+
+    // Group box if multiple selected
+    if (selectedIndices.length > 1) {
+        const bounds = getGroupBounds();
+        ctx.strokeStyle = '#0ff';
+        ctx.strokeRect(bounds.x - cameraX, bounds.y - cameraY, bounds.w, bounds.h);
+
+        // Group handles
+        const handles = [
+            {x: bounds.x, y: bounds.y},
+            {x: bounds.x + bounds.w, y: bounds.y},
+            {x: bounds.x, y: bounds.y + bounds.h},
+            {x: bounds.x + bounds.w, y: bounds.y + bounds.h}
+        ];
+        ctx.fillStyle = '#0ff';
+        handles.forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
     }
+
+    // Marquee selection box
+    if (selectingBox) {
+        const x = Math.min(selectStartX, selectCurrentX) - cameraX;
+        const y = Math.min(selectStartY, selectCurrentY) - cameraY;
+        const w = Math.abs(selectCurrentX - selectStartX);
+        const h = Math.abs(selectCurrentY - selectStartY);
+        ctx.strokeStyle = '#0ff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, w, h);
+        ctx.fillStyle = 'rgba(0,255,255,0.2)';
+        ctx.fillRect(x, y, w, h);
+    }
+
+    // Update JSON output
+    output.value = JSON.stringify(world.platforms, null, 2);
+}
+
 
     addBtn.addEventListener('click', () => {
       const newPlat = {
@@ -183,73 +226,70 @@
     });
 
     // Mouse events
-        canvas.addEventListener('mousedown', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left + cameraX;
-        const my = e.clientY - rect.top + cameraY;
+    // Extra state for marquee selection
+let selectingBox = false;
+let selectStartX = 0, selectStartY = 0;
+let selectCurrentX = 0, selectCurrentY = 0;
 
-        // First check if we hit any existing block
-        const found = world.platforms.findIndex(p =>
-            mx >= p.x && mx <= p.x + p.w &&
-            my >= p.y && my <= p.y + p.h
-        );
+canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left + cameraX;
+    const my = e.clientY - rect.top + cameraY;
 
-        if (found !== -1) {
-            // Always select the block we clicked
-            selectedIndex = found;
-            const p = world.platforms[selectedIndex];
+    // ... your existing handle/rotation/drag logic here ...
 
-            // Now check handles/rotation/drag for this block
-            const handles = getHandles(p);
-            const hit = handles.findIndex(h => Math.abs(mx - h.x) < 6 && Math.abs(my - h.y) < 6);
-            if (hit !== -1) { dragHandle = hit; return; }
-            if (p.rotationHandle && Math.hypot(mx - p.rotationHandle.x, my - p.rotationHandle.y) < 10) {
-                rotatingPlatform = true; return;
-            }
-            if (mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h) {
-                draggingPlatform = true;
-                dragOffsetX = mx - p.x;
-                dragOffsetY = my - p.y;
-                return;
-            }
-        } else {
-            // Clicked empty space → clear selection
-            selectedIndex = null;
-        }
-    });
+    // If no block was hit, start marquee selection
+    const found = world.platforms.findIndex(p =>
+        mx >= p.x && mx <= p.x + p.w &&
+        my >= p.y && my <= p.y + p.h
+    );
+    if (found === -1) {
+        selectingBox = true;
+        selectStartX = mx;
+        selectStartY = my;
+        selectCurrentX = mx;
+        selectCurrentY = my;
+        selectedIndices = []; // clear current selection until mouseup
+    } else {
+        selectedIndex = found; // normal single selection
+    }
+});
 
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left + cameraX;
+    const my = e.clientY - rect.top + cameraY;
 
+    if (selectingBox) {
+        selectCurrentX = mx;
+        selectCurrentY = my;
+    }
 
-    canvas.addEventListener('mousemove', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left + cameraX;
-      const my = e.clientY - rect.top + cameraY;
-      if (dragHandle !== null && selectedIndex !== null) {
-        const p = world.platforms[selectedIndex];
-        switch (dragHandle) {
-          case 0: p.w = (p.x+p.w)-mx; p.h = (p.y+p.h)-my; p.x = mx; p.y = my; break;
-          case 1: p.w = mx-p.x; p.h = (p.y+p.h)-my; p.y = my; break;
-          case 2: p.w = (p.x+p.w)-mx; p.h = my-p.y; p.x = mx; break;
-          case 3: p.w = mx-p.x; p.h = my-p.y; break;
-        }
-      } else if (rotatingPlatform && selectedIndex !== null) {
-        const p = world.platforms[selectedIndex];
-        const cx = p.x + p.w/2;
-        const cy = p.y + p.h/2;
-        const angle = Math.atan2(my - cy, mx - cx) * 180/Math.PI;
-        p.rotation = Math.round(angle * 100) / 100;  // round to hundredths
-      } else if (draggingPlatform && selectedIndex !== null) {
-        const p = world.platforms[selectedIndex];
-        p.x = mx - dragOffsetX;
-        p.y = my - dragOffsetY;
-      }
-    });
+    // ... your existing drag/resize/rotate logic here ...
+});
 
-    canvas.addEventListener('mouseup', () => {
-      dragHandle = null;
-      draggingPlatform = false;
-      rotatingPlatform = false;
-    });
+canvas.addEventListener('mouseup', () => {
+    if (selectingBox) {
+        selectingBox = false;
+        const x1 = Math.min(selectStartX, selectCurrentX);
+        const y1 = Math.min(selectStartY, selectCurrentY);
+        const x2 = Math.max(selectStartX, selectCurrentX);
+        const y2 = Math.max(selectStartY, selectCurrentY);
+
+        // Select all blocks that intersect the box
+        selectedIndices = world.platforms
+            .map((p, i) => {
+                const intersects = !(p.x + p.w < x1 || p.x > x2 || p.y + p.h < y1 || p.y > y2);
+                return intersects ? i : null;
+            })
+            .filter(i => i !== null);
+    }
+
+    dragHandle = null;
+    draggingPlatform = false;
+    rotatingPlatform = false;
+});
+
 
     // Camera scrolling
     document.addEventListener('keydown', (e) => {
