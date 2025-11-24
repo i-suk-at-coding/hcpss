@@ -246,60 +246,140 @@
     });
 
     // Mouse events for selection, dragging, scaling, rotation
-  canvas.addEventListener('mousemove', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left + cameraX;
-  const my = e.clientY - rect.top + cameraY;
+    canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left + cameraX;
+        const my = e.clientY - rect.top + cameraY;
 
-  // Single block resize/rotate/drag
-  if (dragHandle !== null && selectedIndices.length === 1) {
-    const p = world.platforms[selectedIndices[0]];
-    switch (dragHandle) {
-      case 0: p.w = (p.x + p.w) - mx; p.h = (p.y + p.h) - my; p.x = mx; p.y = my; break;
-      case 1: p.w = mx - p.x; p.h = (p.y + p.h) - my; p.y = my; break;
-      case 2: p.w = (p.x + p.w) - mx; p.h = my - p.y; p.x = mx; break;
-      case 3: p.w = mx - p.x; p.h = my - p.y; break;
-    }
-  } else if (rotatingPlatform && selectedIndices.length === 1) {
-    const p = world.platforms[selectedIndices[0]];
-    const cx = p.x + p.w/2;
-    const cy = p.y + p.h/2;
-    const angle = Math.atan2(my - cy, mx - cx) * 180/Math.PI;
-    p.rotation = angle;
-  } else if (draggingPlatform && selectedIndices.length === 1) {
-    const p = world.platforms[selectedIndices[0]];
-    p.x = mx - dragOffsetX;
-    p.y = my - dragOffsetY;
-  }
+        // Check if clicking on an existing platform
+        let found = world.platforms.findIndex(p =>
+            mx >= p.x && mx <= p.x + p.w &&
+            my >= p.y && my <= p.y + p.h
+        );
 
-  // Group scaling
-  if (dragHandle !== null && selectedIndices.length > 1) {
-    const bounds = getGroupBounds();
-    if (!bounds) return;
-    let factorX = 1, factorY = 1;
-    switch (dragHandle) {
-      case 0: factorX = (bounds.x + bounds.w - mx) / bounds.w; factorY = (bounds.y + bounds.h - my) / bounds.h; break;
-      case 1: factorX = (mx - bounds.x) / bounds.w; factorY = (bounds.y + bounds.h - my) / bounds.h; break;
-      case 2: factorX = (bounds.x + bounds.w - mx) / bounds.w; factorY = (my - bounds.y) / bounds.h; break;
-      case 3: factorX = (mx - bounds.x) / bounds.w; factorY = (my - bounds.y) / bounds.h; break;
-    }
-    const cx = bounds.x + bounds.w/2;
-    const cy = bounds.y + bounds.h/2;
-    selectedIndices.forEach(i => {
-      const p = world.platforms[i];
-      p.x = cx + (p.x - cx) * factorX;
-      p.y = cy + (p.y - cy) * factorY;
-      p.w *= factorX;
-      p.h *= factorY;
+        if (found !== -1) {
+            if (e.shiftKey) {
+                // toggle selection
+                if (selectedIndices.includes(found)) {
+                    selectedIndices = selectedIndices.filter(i => i !== found);
+                } else {
+                    selectedIndices.push(found);
+                }
+            } else {
+                selectedIndices = [found];
+            }
+            return;
+        }
+
+        // If single selection, check handles/rotation
+        if (selectedIndices.length === 1) {
+            const p = world.platforms[selectedIndices[0]];
+            const handles = getHandles(p);
+            const hit = handles.findIndex(h => Math.abs(mx - h.x) < 6 && Math.abs(my - h.y) < 6);
+            if (hit !== -1) { dragHandle = hit; return; }
+            if (p.rotationHandle && Math.hypot(mx - p.rotationHandle.x, my - p.rotationHandle.y) < 10) {
+                rotatingPlatform = true; return;
+            }
+            if (mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h) {
+                draggingPlatform = true;
+                dragOffsetX = mx - p.x;
+                dragOffsetY = my - p.y;
+            }
+        }
+
+        // If multiple selection, check group handles or drag group
+        if (selectedIndices.length > 1) {
+            const bounds = getGroupBounds();
+            if (!bounds) return;
+            const handles = [
+                {x: bounds.x, y: bounds.y},
+                {x: bounds.x + bounds.w, y: bounds.y},
+                {x: bounds.x, y: bounds.y + bounds.h},
+                {x: bounds.x + bounds.w, y: bounds.y + bounds.h}
+            ];
+            const hit = handles.findIndex(h => Math.abs(mx - h.x) < 8 && Math.abs(my - h.y) < 8);
+            if (hit !== -1) { dragHandle = hit; return; }
+
+            // drag whole group if clicked inside
+            if (mx >= bounds.x && mx <= bounds.x + bounds.w &&
+                my >= bounds.y && my <= bounds.y + bounds.h) {
+                draggingPlatform = true;
+                dragOffsetX = mx;
+                dragOffsetY = my;
+            }
+        }
     });
-  }
-});
 
-canvas.addEventListener('mouseup', () => {
-  dragHandle = null;
-  draggingPlatform = false;
-  rotatingPlatform = false;
-});
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left + cameraX;
+        const my = e.clientY - rect.top + cameraY;
+
+        // Single block resize
+        if (dragHandle !== null && selectedIndices.length === 1) {
+            const p = world.platforms[selectedIndices[0]];
+            switch (dragHandle) {
+                case 0: p.w = (p.x + p.w) - mx; p.h = (p.y + p.h) - my; p.x = mx; p.y = my; break;
+                case 1: p.w = mx - p.x; p.h = (p.y + p.h) - my; p.y = my; break;
+                case 2: p.w = (p.x + p.w) - mx; p.h = my - p.y; p.x = mx; break;
+                case 3: p.w = mx - p.x; p.h = my - p.y; break;
+            }
+        }
+        // Single block rotation
+        else if (rotatingPlatform && selectedIndices.length === 1) {
+            const p = world.platforms[selectedIndices[0]];
+            const cx = p.x + p.w/2;
+            const cy = p.y + p.h/2;
+            const angle = Math.atan2(my - cy, mx - cx) * 180/Math.PI;
+            p.rotation = angle;
+        }
+        // Single block dragging
+        else if (draggingPlatform && selectedIndices.length === 1) {
+            const p = world.platforms[selectedIndices[0]];
+            p.x = mx - dragOffsetX;
+            p.y = my - dragOffsetY;
+        }
+
+        // Group scaling
+        if (dragHandle !== null && selectedIndices.length > 1) {
+            const bounds = getGroupBounds();
+            if (!bounds) return;
+            let factorX = 1, factorY = 1;
+            switch (dragHandle) {
+                case 0: factorX = (bounds.x + bounds.w - mx) / bounds.w; factorY = (bounds.y + bounds.h - my) / bounds.h; break;
+                case 1: factorX = (mx - bounds.x) / bounds.w; factorY = (bounds.y + bounds.h - my) / bounds.h; break;
+                case 2: factorX = (bounds.x + bounds.w - mx) / bounds.w; factorY = (my - bounds.y) / bounds.h; break;
+                case 3: factorX = (mx - bounds.x) / bounds.w; factorY = (my - bounds.y) / bounds.h; break;
+            }
+            const cx = bounds.x + bounds.w/2;
+            const cy = bounds.y + bounds.h/2;
+            selectedIndices.forEach(i => {
+                const p = world.platforms[i];
+                p.x = cx + (p.x - cx) * factorX;
+                p.y = cy + (p.y - cy) * factorY;
+                p.w *= factorX;
+                p.h *= factorY;
+            });
+        }
+        // Group dragging
+        else if (draggingPlatform && selectedIndices.length > 1) {
+            const dx = mx - dragOffsetX;
+            const dy = my - dragOffsetY;
+            selectedIndices.forEach(i => {
+                const p = world.platforms[i];
+                p.x += dx;
+                p.y += dy;
+            });
+            dragOffsetX = mx;
+            dragOffsetY = my;
+        }
+    });
+
+    canvas.addEventListener('mouseup', () => {
+        dragHandle = null;
+        draggingPlatform = false;
+        rotatingPlatform = false;
+    });
 
     // Camera scrolling with arrow keys/WASD
     document.addEventListener('keydown', (e) => {
