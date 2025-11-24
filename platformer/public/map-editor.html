@@ -130,7 +130,7 @@
     function redraw() {
       ctx.fillStyle = '#222';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+    
       // Floor
       ctx.fillStyle = '#444';
       ctx.fillRect(-cameraX, worldHeight - 40 - cameraY, worldWidth, 40);
@@ -154,6 +154,23 @@
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
+
+    // Draw resize handles
+        const handles = getHandles(p);
+        ctx.fillStyle = '#fff';
+        handles.forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
+
+        // Draw rotation handle (above block)
+        const cx = p.x + p.w/2;
+        const cy = p.y + p.h/2;
+        const hx = cx;
+        const hy = p.y - 40;
+        ctx.fillStyle = '#0ff';
+        ctx.beginPath();
+        ctx.arc(hx - cameraX, hy - cameraY, 6, 0, Math.PI*2);
+        ctx.fill();
+        // store for hit detection
+        p.rotationHandle = {x: hx, y: hy};
       });
 
       // Group box if multiple selected
@@ -161,10 +178,21 @@
         const bounds = getGroupBounds();
         ctx.strokeStyle = '#0ff';
         ctx.strokeRect(bounds.x - cameraX, bounds.y - cameraY, bounds.w, bounds.h);
+
+        // draw group handles
+       const handles = [
+          {x: bounds.x, y: bounds.y},
+          {x: bounds.x + bounds.w, y: bounds.y},
+          {x: bounds.x, y: bounds.y + bounds.h},
+        {x: bounds.x + bounds.w, y: bounds.y + bounds.h}
+        ];
+        ctx.fillStyle = '#0ff';
+        handles.forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
       }
 
       output.value = JSON.stringify(world.platforms, null, 2);
     }
+
 
     addBtn.addEventListener('click', () => {
       const newPlat = {
