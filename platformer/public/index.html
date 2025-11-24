@@ -66,16 +66,15 @@
     const playerList = document.getElementById('playerList');
     const usernameLabel = document.getElementById('username');
     const countLabel = document.getElementById('count');
-    
+
+    // Fit canvas to window
     function resizeCanvas() {
-      canvas.width = window.innerWidth 
-                 - document.getElementById('jsonPanel').offsetWidth 
-                 - document.getElementById('toolbox').offsetWidth;
-      canvas.height = window.innerHeight;
+      canvas.width = window.innerWidth - document.getElementById('right').offsetWidth;
+      canvas.height = window.innerHeight - document.getElementById('hud').offsetHeight;
     }
-    resizeCanvas()
+    resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-    
+
     document.getElementById('editorBtn').addEventListener('click', () => {
       window.location.href = '/map-editor.html';
     });
@@ -219,10 +218,6 @@
     }
 
     requestAnimationFrame(render);
-  </script>
-</body>
-</html>
-
   </script>
 </body>
 </html>
