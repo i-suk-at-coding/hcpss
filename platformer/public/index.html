@@ -39,7 +39,7 @@
       <span id="count">Players: 0</span>
     </div>
     <div id="game">
-      <canvas id="canvas"></canvas>
+      <canvas id="canvas" length="4000" width="2000" ></canvas>
     </div>
   </div>
 
@@ -70,13 +70,6 @@
     document.getElementById('editorBtn').addEventListener('click', () => {
       window.location.href = '/map-editor.html';
     });
-
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
 
     let myUsername = null;
     let world = null;
