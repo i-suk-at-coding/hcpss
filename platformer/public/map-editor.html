@@ -78,6 +78,7 @@
       canvas.width = window.innerWidth - document.getElementById('jsonPanel').offsetWidth - document.getElementById('toolbox').offsetWidth;
       canvas.height = window.innerHeight;
     }
+    resizeCanvas()
     window.addEventListener('resize', resizeCanvas);
 
     function getHandles(p) {
