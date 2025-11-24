@@ -18,20 +18,52 @@ const WORLD = {
   height: 700,
   platforms: [
   {
-    "x": 86,
-    "y": 338,
-    "w": 200,
-    "h": 20,
+    "x": 21,
+    "y": 648,
+    "w": 1762.4479064941406,
+    "h": 23,
     "rotation": 0,
-    "material": "bounce"
+    "material": "normal",
+    "rotationHandle": {
+      "x": 902.2239532470703,
+      "y": 608
+    }
   },
   {
-    "x": 298,
-    "y": 331,
+    "x": 25,
+    "y": 629,
+    "w": 1757.4479064941406,
+    "h": 21,
+    "rotation": 0,
+    "material": "ice",
+    "rotationHandle": {
+      "x": 903.7239532470703,
+      "y": 589
+    }
+  },
+  {
+    "x": 16,
+    "y": 586,
     "w": 200,
     "h": 20,
-    "rotation": 0,
-    "material": "bounce"
+    "rotation": -152.41203210702056,
+    "material": "bounce",
+    "rotationHandle": {
+      "x": 116,
+      "y": 546
+    }
+  },
+  {
+    "x": 1608,
+    "y": 583,
+    "w": 200,
+    "h": 20,
+    "rotation": -36.69948893582423,
+    "material": "bounce",
+    "rotationHandle": {
+      "x": 1708,
+      "y": 543
+    }
   }
 ]
 };
