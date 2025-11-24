@@ -236,7 +236,7 @@
         const cx = p.x + p.w/2;
         const cy = p.y + p.h/2;
         const angle = Math.atan2(my - cy, mx - cx) * 180/Math.PI;
-        p.rotation = angle;
+        p.rotation = Math.round(angle * 100) / 100;  // round to hundredths
       } else if (draggingPlatform && selectedIndex !== null) {
         const p = world.platforms[selectedIndex];
         p.x = mx - dragOffsetX;
