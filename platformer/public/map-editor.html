@@ -77,7 +77,6 @@
     function resizeCanvas() {
       canvas.width = window.innerWidth - document.getElementById('jsonPanel').offsetWidth - document.getElementById('toolbox').offsetWidth;
       canvas.height = window.innerHeight;
-      redraw();
     }
     window.addEventListener('resize', resizeCanvas);
 
@@ -131,6 +130,7 @@
         }
       });
 
+      // keep JSON in sync
       output.value = JSON.stringify(world.platforms, null, 2);
     }
 
@@ -142,14 +142,12 @@
       };
       world.platforms.push(newPlat);
       selectedIndex = world.platforms.length - 1;
-      redraw();
     });
 
     deleteBtn.addEventListener('click', () => {
       if (selectedIndex !== null) {
         world.platforms.splice(selectedIndex, 1);
         selectedIndex = null;
-        redraw();
       }
     });
 
@@ -184,59 +182,9 @@
       } else {
         selectedIndex = world.platforms.findIndex(p =>
           mx >= p.x && mx <= p.x + p.w &&
-          my >= p.y && my <= p.y + p.h 
+          my >= p.y && my <= p.y + p.h
         );
-        redraw();
       }
     });
 
-    canvas.addEventListener('mousemove', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left + cameraX;
-      const my = e.clientY - rect.top + cameraY;
-
-      if (dragHandle !== null && selectedIndex !== null) {
-        const p = world.platforms[selectedIndex];
-        switch (dragHandle) {
-          case 0: p.w = (p.x + p.w) - mx; p.h = (p.y + p.h) - my; p.x = mx; p.y = my; break;
-          case 1: p.w = mx - p.x; p.h = (p.y + p.h) - my; p.y = my; break;
-          case 2: p.w = (p.x + p.w) - mx; p.h = my - p.y; p.x = mx; break;
-          case 3: p.w = mx - p.x; p.h = my - p.y; break;
-        }
-        redraw();
-      } else if (rotatingPlatform && selectedIndex !== null) {
-        const p = world.platforms[selectedIndex];
-        const cx = p.x + p.w/2;
-        const cy = p.y + p.h/2;
-        const angle = Math.atan2(my - cy, mx - cx) * 180/Math.PI;
-        p.rotation = angle;
-        redraw();
-      } else if (draggingPlatform && selectedIndex !== null) {
-        const p = world.platforms[selectedIndex];
-        p.x = mx - dragOffsetX;
-        p.y = my - dragOffsetY;
-        redraw();
-      }
-    });
-
-    canvas.addEventListener('mouseup', () => {
-      dragHandle = null;
-      draggingPlatform = false;
-      rotatingPlatform = false;
-    });
-
-    // Camera scrolling with arrow keys/WASD
-    document.addEventListener('keydown', (e) => {
-      const step = 50;
-      if (e.key === 'ArrowLeft' || e.key === 'a') cameraX = Math.max(0, cameraX - step);
-      if (e.key === 'ArrowRight' || e.key === 'd') cameraX = Math.min(worldWidth - canvas.width, cameraX + step);
-      if (e.key === 'ArrowUp' || e.key === 'w') cameraY = Math.max(0, cameraY - step);
-      if (e.key === 'ArrowDown' || e.key === 's') cameraY = Math.min(worldHeight - canvas.height, cameraY + step);
-      redraw();
-    });
-
-    // Initialize
-    resizeCanvas();
-  </script>
-</body>
-</html>
+    canvas.addEventListener('mousemove', (e
