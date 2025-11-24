@@ -5,20 +5,20 @@
   <title>Map Editor</title>
   <style>
     body { margin:0; height:100vh; display:flex; font-family:"Segoe UI",sans-serif; background:#0f0f0f; color:#eee; }
-    #toolbox { width:220px; background:#1a1a1a; color:#eee; padding:12px; border-right:1px solid #333; display:flex; flex-direction:column; gap:8px; }
+    #toolbox { width:220px; background:#1a1a1a; padding:12px; border-right:1px solid #333; display:flex; flex-direction:column; gap:8px; }
     #toolbox h3 { margin:0 0 8px; font-size:14px; }
     #toolbox label { font-size:13px; display:flex; flex-direction:column; gap:4px; }
     #toolbox select, #toolbox input { padding:4px; background:#111; color:#eee; border:1px solid #333; border-radius:4px; }
     #toolbox button { background:#3b82f6; color:#fff; border:none; border-radius:6px; padding:6px; cursor:pointer; font-size:13px; }
     #toolbox button:hover { background:#2563eb; }
     #editorArea { flex:1; display:flex; flex-direction:column; background:#1a1a1a; }
-    #canvas { flex:1; background:#222; border-right:1px solid #333; }
+    #canvas { flex:1; background:#222; }
     #jsonPanel { width:400px; background:#121212; border-left:1px solid #333; display:flex; flex-direction:column; }
     #jsonPanel h3 { margin:0; padding:12px; font-size:14px; background:#1f1f1f; border-bottom:1px solid #333; }
     #editorOutput { flex:1; width:100%; border:none; resize:none; padding:12px; font-family:monospace; font-size:13px; background:#0f0f0f; color:#eee; overflow:auto; white-space:pre; }
     #copyBtn { background:#3b82f6; border:none; color:#fff; padding:8px; cursor:pointer; font-size:13px; }
     #copyBtn:hover { background:#2563eb; }
-    #infoPanel { width:260px; background:#1a1a1a; color:#eee; padding:12px; border-left:1px solid #333; overflow-y:auto; }
+    #infoPanel { width:260px; background:#1a1a1a; padding:12px; border-left:1px solid #333; overflow-y:auto; }
     #infoPanel h3 { margin:0 0 8px; font-size:14px; }
     #infoPanel ul { list-style:none; padding:0; margin:0; }
     #infoPanel li { font-size:13px; margin:6px 0; }
@@ -66,13 +66,9 @@
       <li>Click a block to select it.</li>
       <li>Shift + Click to select multiple blocks.</li>
       <li>Drag handles to resize blocks.</li>
-      <li>Drag rotation handle (blue circle) to rotate.</li>
+      <li>Drag rotation handle (cyan circle) to rotate.</li>
       <li>Drag inside block to move it.</li>
       <li>Use arrow keys/WASD to scroll the camera.</li>
-      <li>Use "Add Platform" to create new blocks.</li>
-      <li>Use "Delete Selected" to remove blocks.</li>
-      <li>Use "Save JSON" to export map data.</li>
-      <li>Use "Load Map" to import a saved JSON file.</li>
       <li>Group selection: drag group handles to scale or move multiple blocks at once.</li>
     </ul>
   </div>
@@ -103,168 +99,167 @@
     let dragOffsetY = 0;
 
     function resizeCanvas() {
-        canvas.width = window.innerWidth - document.getElementById('jsonPanel').offsetWidth - document.getElementById('toolbox').offsetWidth - document.getElementById('infoPanel').offsetWidth;
-        canvas.height = window.innerHeight;
+      canvas.width = window.innerWidth - document.getElementById('jsonPanel').offsetWidth - document.getElementById('toolbox').offsetWidth - document.getElementById('infoPanel').offsetWidth;
+      canvas.height = window.innerHeight;
     }
     window.addEventListener('resize', resizeCanvas);
 
     function getHandles(p) {
-        return [
-            {x: p.x, y: p.y},
-            {x: p.x + p.w, y: p.y},
-            {x: p.x, y: p.y + p.h},
-            {x: p.x + p.w, y: p.y + p.h}
-        ];
+      return [
+        {x: p.x, y: p.y},
+        {x: p.x + p.w, y: p.y},
+        {x: p.x, y: p.y + p.h},
+        {x: p.x + p.w, y: p.y + p.h}
+      ];
     }
 
     function getGroupBounds() {
-        const selected = selectedIndices.map(i => world.platforms[i]);
-        if (selected.length === 0) return null;
-        const minX = Math.min(...selected.map(p => p.x));
-        const minY = Math.min(...selected.map(p => p.y));
-        const maxX = Math.max(...selected.map(p => p.x + p.w));
-        const maxY = Math.max(...selected.map(p => p.y + p.h));
-        return { x:minX, y:minY, w:maxX-minX, h:maxY-minY };
+      const selected = selectedIndices.map(i => world.platforms[i]);
+      if (selected.length === 0) return null;
+      const minX = Math.min(...selected.map(p => p.x));
+      const minY = Math.min(...selected.map(p => p.y));
+      const maxX = Math.max(...selected.map(p => p.x + p.w));
+      const maxY = Math.max(...selected.map(p => p.y + p.h));
+      return { x:minX, y:minY, w:maxX-minX, h:maxY-minY };
     }
 
     function redraw() {
-        ctx.fillStyle = '#222';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#222';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Floor
-        ctx.fillStyle = '#444';
-        ctx.fillRect(-cameraX, worldHeight - 40 - cameraY, worldWidth, 40);
+      // Floor
+      ctx.fillStyle = '#444';
+      ctx.fillRect(-cameraX, worldHeight - 40 - cameraY, worldWidth, 40);
 
-        world.platforms.forEach((p) => {
-            ctx.save();
-            ctx.translate(p.x - cameraX + p.w/2, p.y - cameraY + p.h/2);
-            ctx.rotate(p.rotation * Math.PI/180);
-            ctx.fillStyle = p.material === 'ice' ? '#3b82f6'
-                         : p.material === 'lava' ? '#ef4444'
-                         : p.material === 'bounce' ? '#facc15'
-                         : p.material === 'sticky' ? '#10b981'
-                         : '#888';
-            ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-            ctx.restore();
-        });
+      world.platforms.forEach((p) => {
+        ctx.save();
+        ctx.translate(p.x - cameraX + p.w/2, p.y - cameraY + p.h/2);
+        ctx.rotate(p.rotation * Math.PI/180);
+        ctx.fillStyle = p.material === 'ice' ? '#3b82f6'
+                     : p.material === 'lava' ? '#ef4444'
+                     : p.material === 'bounce' ? '#facc15'
+                     : p.material === 'sticky' ? '#10b981'
+                     : '#888';
+        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+        ctx.restore();
+      });
 
-        // Draw handles for selected blocks
-        selectedIndices.forEach(i => {
-            const p = world.platforms[i];
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
+      // Draw handles for selected blocks
+      selectedIndices.forEach(i => {
+        const p = world.platforms[i];
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
 
-            // Resize handles
-            const handles = getHandles(p);
-            ctx.fillStyle = '#fff';
-            handles.forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8, 8));
-            // Rotation handle
-            const cx = p.x + p.w/2;
-            const cy = p.y + p.h/2;
-            const hx = cx;
-            const hy = p.y - 40;
-            ctx.fillStyle = '#0ff';
-            ctx.beginPath();
-            ctx.arc(hx - cameraX, hy - cameraY, 6, 0, Math.PI*2);
-            ctx.fill();
-            p.rotationHandle = {x: hx, y: hy};
-        });
+        // Resize handles
+        const handles = getHandles(p);
+        ctx.fillStyle = '#fff';
+        handles.forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
 
-        // Group box if multiple selected
-        if (selectedIndices.length > 1) {
-            const bounds = getGroupBounds();
-            ctx.strokeStyle = '#0ff';
-            ctx.strokeRect(bounds.x - cameraX, bounds.y - cameraY, bounds.w, bounds.h);
+        // Rotation handle
+        const cx = p.x + p.w/2;
+        const hy = p.y - 40;
+        ctx.fillStyle = '#0ff';
+        ctx.beginPath();
+        ctx.arc(hx - cameraX, hy - cameraY, 6, 0, Math.PI*2);
+        ctx.fill();
+        p.rotationHandle = {x: hx, y: hy};
+      });
 
-            // Group handles
-            const handles = [
-                {x: bounds.x, y: bounds.y},
-                {x: bounds.x + bounds.w, y: bounds.y},
-                {x: bounds.x, y: bounds.y + bounds.h},
-                {x: bounds.x + bounds.w, y: bounds.y + bounds.h}
-            ];
-            ctx.fillStyle = '#0ff';
-            handles.forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
-        }
+      // Group box if multiple selected
+      if (selectedIndices.length > 1) {
+        const bounds = getGroupBounds();
+        ctx.strokeStyle = '#0ff';
+        ctx.strokeRect(bounds.x - cameraX, bounds.y - cameraY, bounds.w, bounds.h);
 
-        output.value = JSON.stringify(world.platforms, null, 2);
+        // Group handles
+        const handles = [
+          {x: bounds.x, y: bounds.y},
+          {x: bounds.x + bounds.w, y: bounds.y},
+          {x: bounds.x, y: bounds.y + bounds.h},
+          {x: bounds.x + bounds.w, y: bounds.y + bounds.h}
+        ];
+        ctx.fillStyle = '#0ff';
+        handles.forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
+      }
+
+      output.value = JSON.stringify(world.platforms, null, 2);
     }
 
-    // Add / Delete / Save / Copy / Load buttons
+    // Add / Delete / Save / Copy / Load
     addBtn.addEventListener('click', () => {
-        const newPlat = {
-            x: cameraX + 100, y: cameraY + 100, w: 200, h: 20,
-            rotation: parseInt(rotationInput.value, 10) || 0,
-            material: materialSelect.value
-        };
-        world.platforms.push(newPlat);
-        selectedIndices = [world.platforms.length - 1];
+      const newPlat = {
+        x: cameraX + 100, y: cameraY + 100, w: 200, h: 20,
+        rotation: parseInt(rotationInput.value, 10) || 0,
+        material: materialSelect.value
+      };
+      world.platforms.push(newPlat);
+      selectedIndices = [world.platforms.length - 1];
     });
 
     deleteBtn.addEventListener('click', () => {
-        if (selectedIndices.length > 0) {
-            world.platforms = world.platforms.filter((_, i) => !selectedIndices.includes(i));
-            selectedIndices = [];
-        }
+      if (selectedIndices.length > 0) {
+        world.platforms = world.platforms.filter((_, i) => !selectedIndices.includes(i));
+        selectedIndices = [];
+      }
     });
 
     saveBtn.addEventListener('click', () => {
-        output.value = JSON.stringify(world.platforms, null, 2);
+      output.value = JSON.stringify(world.platforms, null, 2);
     });
 
     copyBtn.addEventListener('click', () => {
-        output.select();
-        document.execCommand('copy');
-        alert('JSON copied to clipboard!');
+      output.select();
+      document.execCommand('copy');
+      alert('JSON copied to clipboard!');
     });
 
     loadFile.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            try {
-                const data = JSON.parse(evt.target.result);
-                if (Array.isArray(data)) {
-                    world.platforms = data;
-                } else if (data.platforms) {
-                    world.platforms = data.platforms;
-                } else {
-                    alert("Invalid map format");
-                    return;
-                }
-                selectedIndices = [];
-            } catch (err) {
-                alert("Error loading map: " + err.message);
-            }
-        };
-        reader.readAsText(file);
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const data = JSON.parse(evt.target.result);
+          if (Array.isArray(data)) {
+            world.platforms = data;
+          } else if (data.platforms) {
+            world.platforms = data.platforms;
+          } else {
+            alert("Invalid map format");
+            return;
+          }
+          selectedIndices = [];
+        } catch (err) {
+          alert("Error loading map: " + err.message);
+        }
+      };
+      reader.readAsText(file);
     });
 
-    // Mouse events (use the corrected handlers you dropped in earlier)
-    // ... mousedown, mousemove, mouseup handlers here ...
+    // Mouse events (use the corrected mousedown/mousemove/mouseup handlers)
+    // ... insert the handlers we built earlier here ...
 
     // Camera scrolling
     document.addEventListener('keydown', (e) => {
-        const step = 50;
-        if (e.key === 'ArrowLeft' || e.key === 'a') cameraX = Math.max(0, cameraX - step);
-        if (e.key === 'ArrowRight' || e.key === 'd') cameraX = Math.min(worldWidth - canvas.width, cameraX + step);
-        if (e.key === 'ArrowUp' || e.key === 'w') cameraY = Math.max(0, cameraY - step);
-        if (e.key === 'ArrowDown' || e.key === 's') cameraY = Math.min(worldHeight - canvas.height, cameraY + step);
+      const step = 50;
+      if (e.key === 'ArrowLeft' || e.key === 'a') cameraX = Math.max(0, cameraX - step);
+      if (e.key === 'ArrowRight' || e.key === 'd') cameraX = Math.min(worldWidth - canvas.width, cameraX + step);
+      if (e.key === 'ArrowUp' || e.key === 'w') cameraY = Math.max(0, cameraY - step);
+      if (e.key === 'ArrowDown' || e.key === 's') cameraY = Math.min(worldHeight - canvas.height, cameraY + step);
     });
 
     // Auto-update loop
     function gameLoop() {
-        redraw();
-        requestAnimationFrame(gameLoop);
+      redraw();
+      requestAnimationFrame(gameLoop);
     }
 
     // Initialize
     window.addEventListener('load', () => {
-        document.getElementById('loading').style.display = 'none';
-        resizeCanvas();
-        gameLoop();
+      document.getElementById('loading').style.display = 'none';
+      resizeCanvas();
+      gameLoop();
     });
   </script>
 </body>
