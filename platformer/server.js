@@ -16,56 +16,7 @@ const GRAVITY = 1600;
 const WORLD = {
   width: 1200,
   height: 700,
-  platforms: [
-  {
-    "x": 21,
-    "y": 648,
-    "w": 1762.4479064941406,
-    "h": 23,
-    "rotation": 0,
-    "material": "normal",
-    "rotationHandle": {
-      "x": 902.2239532470703,
-      "y": 608
-    }
-  },
-  {
-    "x": 25,
-    "y": 629,
-    "w": 1757.4479064941406,
-    "h": 21,
-    "rotation": 0,
-    "material": "ice",
-    "rotationHandle": {
-      "x": 903.7239532470703,
-      "y": 589
-    }
-  },
-  {
-    "x": 16,
-    "y": 586,
-    "w": 200,
-    "h": 20,
-    "rotation": -152.41203210702056,
-    "material": "bounce",
-    "rotationHandle": {
-      "x": 116,
-      "y": 546
-    }
-  },
-  {
-    "x": 1608,
-    "y": 583,
-    "w": 200,
-    "h": 20,
-    "rotation": -36.69948893582423,
-    "material": "bounce",
-    "rotationHandle": {
-      "x": 1708,
-      "y": 543
-    }
-  }
-]
+  platforms: [   {     "x": -17,     "y": 557,     "w": 200,     "h": 20,     "rotation": 0,     "material": "normal",     "rotationHandle": {       "x": 83,       "y": 517     }   },   {     "x": 178,     "y": 557,     "w": 200,     "h": 20,     "rotation": 0,     "material": "normal",     "rotationHandle": {       "x": 278,       "y": 517     }   },   {     "x": 369,     "y": 557,     "w": 200,     "h": 20,     "rotation": 0,     "material": "normal",     "rotationHandle": {       "x": 469,       "y": 517     }   },   {     "x": 550,     "y": 558,     "w": 200,     "h": 20,     "rotation": 0,     "material": "normal",     "rotationHandle": {       "x": 650,       "y": 518     }   },   {     "x": 731,     "y": 558,     "w": 200,     "h": 20,     "rotation": 0,     "material": "normal",     "rotationHandle": {       "x": 831,       "y": 518     }   },   {     "x": -2,     "y": 537,     "w": 200,     "h": 20,     "rotation": 0,     "material": "bounce",     "rotationHandle": {       "x": 98,       "y": 497     }   },   {     "x": 180,     "y": 498,     "w": 200,     "h": 20,     "rotation": -25.848396921234784,     "material": "lava",     "rotationHandle": {       "x": 280,       "y": 458     }   },   {     "x": 361,     "y": 436,     "w": 200,     "h": 20,     "rotation": 0,     "material": "ice",     "rotationHandle": {       "x": 461,       "y": 396     }   },   {     "x": 610,     "y": 293,     "w": 200,     "h": 20,     "rotation": -55.89327400874002,     "material": "normal",     "rotationHandle": {       "x": 710,       "y": 253     }   },   {     "x": 693,     "y": 538,     "w": 200,     "h": 20,     "rotation": 0,     "material": "sticky",     "rotationHandle": {       "x": 793,       "y": 498     }   },   {     "x": 494,     "y": 537,     "w": 200,     "h": 20,     "rotation": 0,     "material": "sticky",     "rotationHandle": {       "x": 594,       "y": 497     }   },   {     "x": 702,     "y": 490,     "w": 200,     "h": 20,     "rotation": -20.004195272804814,     "material": "bounce",     "rotationHandle": {       "x": 802,       "y": 450     }   },   {     "x": 439,     "y": 173,     "w": 200,     "h": 20,     "rotation": 0,     "material": "bounce",     "rotationHandle": {       "x": 539,       "y": 133     }   },   {     "x": 257,     "y": 288,     "w": 200,     "h": 20,     "rotation": 0,     "material": "lava",     "rotationHandle": {       "x": 357,       "y": 248     }   },   {     "x": 179,     "y": 223,     "w": 200,     "h": 20,     "rotation": -145.36663147729428,     "material": "ice",     "rotationHandle": {       "x": 279,       "y": 183     }   },   {     "x": 78,     "y": 334,     "w": 200,     "h": 20,     "rotation": -24.393184955454057,     "material": "ice",     "rotationHandle": {       "x": 178,       "y": 294     }   },   {     "x": 228,     "y": 82,     "w": 200,     "h": 20,     "rotation": 0,     "material": "sticky",     "rotationHandle": {       "x": 328,       "y": 42     }   },   {     "x": -68,     "y": 76,     "w": 200,     "h": 20,     "rotation": 61.936741224062125,     "material": "normal",     "rotationHandle": {       "x": 32,       "y": 36     }   },   {     "x": 599,     "y": 70,     "w": 200,     "h": 20,     "rotation": 0,     "material": "ice",     "rotationHandle": {       "x": 699,       "y": 30     }   },   {     "x": 78,     "y": 331,     "w": 200,     "h": 20,     "rotation": -24.412688363272864,     "material": "bounce",     "rotationHandle": {       "x": 178,       "y": 291     }   },   {     "x": -91,     "y": 241,     "w": 200,     "h": 20,     "rotation": 0,     "material": "normal",     "rotationHandle": {       "x": 9,       "y": 201     }   } ]
 };
 
 let players = {};
