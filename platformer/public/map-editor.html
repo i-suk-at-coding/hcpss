@@ -168,7 +168,7 @@
       alert('JSON copied!');
     });
 
-        loadFile.addEventListener('change', (e) => {
+      loadFile.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -183,28 +183,41 @@
     });
 
     // Mouse events
-    canvas.addEventListener('mousedown', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left + cameraX;
-      const my = e.clientY - rect.top + cameraY;
-      if (selectedIndex !== null) {
-        const p = world.platforms[selectedIndex];
-        const handles = getHandles(p);
-        const hit = handles.findIndex(h => Math.abs(mx - h.x) < 6 && Math.abs(my - h.y) < 6);
-        if (hit !== -1) { dragHandle = hit; return; }
-        if (p.rotationHandle && Math.hypot(mx - p.rotationHandle.x, my - p.rotationHandle.y) < 10) {
-          rotatingPlatform = true; return;
+        canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left + cameraX;
+        const my = e.clientY - rect.top + cameraY;
+
+        // If a block is already selected, check its handles/rotation/drag
+        if (selectedIndex !== null) {
+            const p = world.platforms[selectedIndex];
+            const handles = getHandles(p);
+            const hit = handles.findIndex(h => Math.abs(mx - h.x) < 6 && Math.abs(my - h.y) < 6);
+            if (hit !== -1) { dragHandle = hit; return; }
+            if (p.rotationHandle && Math.hypot(mx - p.rotationHandle.x, my - p.rotationHandle.y) < 10) {
+                rotatingPlatform = true; return;
+            }
+            if (mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h) {
+                draggingPlatform = true;
+                dragOffsetX = mx - p.x;
+                dragOffsetY = my - p.y;
+                return;
+            }
         }
-        if (mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h) {
-          draggingPlatform = true;
-          dragOffsetX = mx - p.x;
-          dragOffsetY = my - p.y;
-          return;
+
+        // Selection logic: find any block under cursor
+        const found = world.platforms.findIndex(p =>
+            mx >= p.x && mx <= p.x + p.w &&
+            my >= p.y && my <= p.y + p.h
+        );
+
+        if (found !== -1) {
+            selectedIndex = found;   // reselect clicked block
+        } else {
+            selectedIndex = null;    // clear selection if clicked empty space
         }
-      }
-      // selection
-      selectedIndex = world.platforms.findIndex(p => mx >= p.x && mx <= p.x+p.w && my >= p.y && my <= p.y+p.h);
     });
+
 
     canvas.addEventListener('mousemove', (e) => {
       const rect = canvas.getBoundingClientRect();
