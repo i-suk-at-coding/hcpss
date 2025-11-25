@@ -206,7 +206,12 @@
     }
 
     // Compact JSON output: one block per line
-    output.value = world.platforms.map(p => JSON.stringify(p)).join("\n");
+    output.value = world.platforms
+  .map(p => JSON.stringify({
+    x: p.x, y: p.y, w: p.w, h: p.h, rotation: p.rotation, material: p.material
+  }))
+  .join('\n');
+
   }
 
   addBtn.addEventListener('click', () => {
