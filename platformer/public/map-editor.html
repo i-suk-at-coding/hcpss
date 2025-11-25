@@ -74,27 +74,20 @@
     </ul>
   </div>
 
- <script>
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  const output = document.getElementById('editorOutput');
-  const addBtn = document.getElementById('addBtn');
-  const deleteBtn = document.getElementById('deleteBtn');
-  const saveBtn = document.getElementById('saveBtn');
-  const copyBtn = document.getElementById('copyBtn');
-  const loadFile = document.getElementById('loadFile');
-  const materialSelect = document.getElementById('materialSelect');
-  const rotationInput = document.getElementById('rotationInput');
-  const loadTextBtn = document.getElementById('loadTextBtn');   // new button
-  const jsonInput = document.getElementById('jsonInput');       // new textarea
-
+<script>
+  // --- World and camera state ---
   const worldWidth = 4000, worldHeight = 2000;
   let cameraX = 0, cameraY = 0;
   let world = { platforms: [] };
   let selectedIndices = [];
-  let dragHandle = null, draggingPlatform = false, rotatingPlatform = false;
+
+  // --- Dragging state ---
+  let dragHandle = null;
+  let draggingPlatform = false;
+  let rotatingPlatform = false;
   let dragOffsetX = 0, dragOffsetY = 0;
 
+  // --- Canvas resize ---
   function resizeCanvas() {
     canvas.width =
       window.innerWidth -
@@ -105,6 +98,7 @@
   }
   window.addEventListener('resize', resizeCanvas);
 
+  // --- Helpers ---
   function getHandles(p) {
     return [
       { x: p.x, y: p.y },
@@ -123,6 +117,7 @@
     return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
   }
 
+  // --- Redraw everything ---
   function redraw() {
     ctx.fillStyle = '#222';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -131,34 +126,29 @@
     ctx.fillStyle = '#444';
     ctx.fillRect(-cameraX, worldHeight - 40 - cameraY, worldWidth, 40);
 
-    // Draw all platforms
+    // Platforms
     world.platforms.forEach((p, i) => {
       ctx.save();
       ctx.translate(p.x - cameraX + p.w / 2, p.y - cameraY + p.h / 2);
       ctx.rotate((p.rotation * Math.PI) / 180);
       ctx.fillStyle =
-        p.material === 'ice'
-          ? '#3b82f6'
-          : p.material === 'lava'
-          ? '#ef4444'
-          : p.material === 'bounce'
-          ? '#facc15'
-          : p.material === 'sticky'
-          ? '#10b981'
-          : '#888';
+        p.material === 'ice'    ? '#3b82f6' :
+        p.material === 'lava'   ? '#ef4444' :
+        p.material === 'bounce' ? '#facc15' :
+        p.material === 'sticky' ? '#10b981' :
+                                  '#888';
       ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
       ctx.restore();
 
-      // Single‑block handles if selected
+      // Selection handles
       if (selectedIndices.includes(i)) {
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
 
         // Corner handles
-        const handles = getHandles(p);
         ctx.fillStyle = '#fff';
-        handles.forEach(h =>
+        getHandles(p).forEach(h =>
           ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8)
         );
 
@@ -173,26 +163,24 @@
       }
     });
 
-    // Group box if multiple selected
+    // Group box
     if (selectedIndices.length > 1) {
       const bounds = getGroupBounds();
       ctx.strokeStyle = '#0ff';
       ctx.strokeRect(bounds.x - cameraX, bounds.y - cameraY, bounds.w, bounds.h);
 
-      // Group handles
-      const handles = [
+      ctx.fillStyle = '#0ff';
+      [
         { x: bounds.x, y: bounds.y },
         { x: bounds.x + bounds.w, y: bounds.y },
         { x: bounds.x, y: bounds.y + bounds.h },
         { x: bounds.x + bounds.w, y: bounds.y + bounds.h }
-      ];
-      ctx.fillStyle = '#0ff';
-      handles.forEach(h =>
+      ].forEach(h =>
         ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8)
       );
     }
 
-    // Marquee selection box
+    // Marquee selection
     if (selectingBox) {
       const x = Math.min(selectStartX, selectCurrentX) - cameraX;
       const y = Math.min(selectStartY, selectCurrentY) - cameraY;
@@ -205,38 +193,35 @@
       ctx.fillRect(x, y, w, h);
     }
 
-    // Compact JSON output: one block per line
+    // Compact JSON output
     output.value = world.platforms
-    .map(p => JSON.stringify({
-    x: p.x, y: p.y, w: p.w, h: p.h, rotation: p.rotation, material: p.material
-    }))
-    .join('\n');
-    }
+      .map(p => JSON.stringify({
+        x: p.x, y: p.y, w: p.w, h: p.h,
+        rotation: p.rotation, material: p.material
+      }))
+      .join('\n');
+  }
 
+  // --- Buttons ---
   addBtn.addEventListener('click', () => {
-    const newPlat = {
+    world.platforms.push({
       x: cameraX + 100,
       y: cameraY + 100,
       w: 200,
       h: 20,
       rotation: parseInt(rotationInput.value, 10) || 0,
       material: materialSelect.value
-    };
-    world.platforms.push(newPlat);
+    });
     selectedIndices = [world.platforms.length - 1];
   });
 
   deleteBtn.addEventListener('click', () => {
-    if (selectedIndices.length > 0) {
-      world.platforms = world.platforms.filter(
-        (_, i) => !selectedIndices.includes(i)
-      );
-      selectedIndices = [];
-    }
+    world.platforms = world.platforms.filter((_, i) => !selectedIndices.includes(i));
+    selectedIndices = [];
   });
 
   saveBtn.addEventListener('click', () => {
-    output.value = world.platforms.map(p => JSON.stringify(p)).join("\n");
+    output.value = world.platforms.map(p => JSON.stringify(p)).join('\n');
   });
 
   copyBtn.addEventListener('click', () => {
@@ -254,81 +239,45 @@
         const data = JSON.parse(evt.target.result);
         world.platforms = Array.isArray(data) ? data : data.platforms || [];
         selectedIndices = [];
-      } catch (err) {
+      } catch {
         alert('Error loading map');
       }
     };
     reader.readAsText(file);
   });
 
-  // Load JSON from text area (robust: handles array or one-per-line)
-// Load JSON from text area (robust: handles array, one-per-line, trailing commas)
-loadTextBtn.addEventListener('click', () => {
-  try {
-    const raw = jsonInput.value.trim();
+  // --- Load from text ---
+  loadTextBtn.addEventListener('click', () => {
+    try {
+      const raw = jsonInput.value.trim();
+      let parsed;
 
-    let parsed;
-
-    if (raw.startsWith('[') && raw.endsWith(']')) {
-      // Full JSON array: parse directly
-      parsed = JSON.parse(raw);
-    } else {
-      // One object per line. Clean each line and wrap into an array.
-      const lines = raw
-        .split('\n')
-        .map(l => l.trim())
-        .filter(Boolean)
-        // strip any trailing commas per line to avoid ",,"
-        .map(l => l.replace(/,?\s*$/, ''));
-
-      const jsonArray = `[${lines.join(',')}]`;
-      parsed = JSON.parse(jsonArray);
-    }
-
-    if (!Array.isArray(parsed)) {
-      throw new Error('Expected an array of platform objects.');
-    }
-
-    // Normalize objects to expected fields
-    const normalized = parsed.map((p, idx) => {
-      if (typeof p !== 'object' || p === null) {
-        throw new Error(`Item ${idx} is not an object.`);
+      if (raw.startsWith('[') && raw.endsWith(']')) {
+        parsed = JSON.parse(raw);
+      } else {
+        const lines = raw.split('\n')
+          .map(l => l.trim())
+          .filter(Boolean)
+          .map(l => l.replace(/,?\s*$/, ''));
+        parsed = JSON.parse(`[${lines.join(',')}]`);
       }
-      const required = ['x','y','w','h','rotation','material'];
-      const missing = required.filter(k => !(k in p));
-      if (missing.length) {
-        throw new Error(`Item ${idx} is missing: ${missing.join(', ')}`);
-      }
-      return {
-        x: Number(p.x),
-        y: Number(p.y),
-        w: Number(p.w),
-        h: Number(p.h),
+
+      if (!Array.isArray(parsed)) throw new Error('Expected an array');
+
+      world.platforms = parsed.map(p => ({
+        x: Number(p.x), y: Number(p.y),
+        w: Number(p.w), h: Number(p.h),
         rotation: Number(p.rotation),
         material: String(p.material)
-      };
-    });
+      }));
+      selectedIndices = [];
+      redraw();
+    } catch (err) {
+      alert(`Invalid JSON text: ${err.message}`);
+    }
+  });
 
-    world.platforms = normalized;
-    selectedIndices = [];
-    redraw();
-  } catch (err) {
-    alert(`Invalid JSON text: ${err.message}`);
-  }
-});
-
-
-    // 4) Apply and redraw
-    world.platforms = normalized;
-    selectedIndices = [];
-    redraw();
-  } catch (err) {
-    alert(`Invalid JSON text: ${err.message}`);
-  }
-});
-
-
-  // Mouse events
+  // --- Mouse events ---
   let selectingBox = false;
   let selectStartX = 0, selectStartY = 0;
   let selectCurrentX = 0, selectCurrentY = 0;
@@ -344,10 +293,8 @@ loadTextBtn.addEventListener('click', () => {
 
     if (found === -1) {
       selectingBox = true;
-      selectStartX = mx;
-      selectStartY = my;
-      selectCurrentX = mx;
-      selectCurrentY = my;
+      selectStartX = mx; selectStartY = my;
+      selectCurrentX = mx; selectCurrentY = my;
       selectedIndices = [];
     } else {
       selectedIndices = [found];
@@ -358,7 +305,249 @@ loadTextBtn.addEventListener('click', () => {
     }
   });
 
-    canvas.addEventListener('mousemove', e => {
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left + cameraX;
+    const my = e.clientY - rect.top + cameraY;
+
+    if (selectingBox) {
+      selectCurrentX = mx;
+      selectCurrentY = my;
+      return;
+    }
+
+    <script>
+  // --- World and camera state ---
+  const worldWidth = 4000, worldHeight = 2000;
+  let cameraX = 0, cameraY = 0;
+  let world = { platforms: [] };
+  let selectedIndices = [];
+
+  // --- Dragging state ---
+  let dragHandle = null;
+  let draggingPlatform = false;
+  let rotatingPlatform = false;
+  let dragOffsetX = 0, dragOffsetY = 0;
+
+  // --- Canvas resize ---
+  function resizeCanvas() {
+    canvas.width =
+      window.innerWidth -
+      document.getElementById('jsonPanel').offsetWidth -
+      document.getElementById('toolbox').offsetWidth -
+      document.getElementById('infoPanel').offsetWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  // --- Helpers ---
+  function getHandles(p) {
+    return [
+      { x: p.x, y: p.y },
+      { x: p.x + p.w, y: p.y },
+      { x: p.x, y: p.y + p.h },
+      { x: p.x + p.w, y: p.y + p.h }
+    ];
+  }
+
+  function getGroupBounds() {
+    const selected = selectedIndices.map(i => world.platforms[i]);
+    const minX = Math.min(...selected.map(p => p.x));
+    const minY = Math.min(...selected.map(p => p.y));
+    const maxX = Math.max(...selected.map(p => p.x + p.w));
+    const maxY = Math.max(...selected.map(p => p.y + p.h));
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+
+  // --- Redraw everything ---
+  function redraw() {
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Floor
+    ctx.fillStyle = '#444';
+    ctx.fillRect(-cameraX, worldHeight - 40 - cameraY, worldWidth, 40);
+
+    // Platforms
+    world.platforms.forEach((p, i) => {
+      ctx.save();
+      ctx.translate(p.x - cameraX + p.w / 2, p.y - cameraY + p.h / 2);
+      ctx.rotate((p.rotation * Math.PI) / 180);
+      ctx.fillStyle =
+        p.material === 'ice'    ? '#3b82f6' :
+        p.material === 'lava'   ? '#ef4444' :
+        p.material === 'bounce' ? '#facc15' :
+        p.material === 'sticky' ? '#10b981' :
+                                  '#888';
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+
+      // Selection handles
+      if (selectedIndices.includes(i)) {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
+
+        // Corner handles
+        ctx.fillStyle = '#fff';
+        getHandles(p).forEach(h =>
+          ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8)
+        );
+
+        // Rotation handle
+        const cx = p.x + p.w / 2;
+        const hy = p.y - 40;
+        ctx.fillStyle = '#0ff';
+        ctx.beginPath();
+        ctx.arc(cx - cameraX, hy - cameraY, 6, 0, Math.PI * 2);
+        ctx.fill();
+        p.rotationHandle = { x: cx, y: hy };
+      }
+    });
+
+    // Group box
+    if (selectedIndices.length > 1) {
+      const bounds = getGroupBounds();
+      ctx.strokeStyle = '#0ff';
+      ctx.strokeRect(bounds.x - cameraX, bounds.y - cameraY, bounds.w, bounds.h);
+
+      ctx.fillStyle = '#0ff';
+      [
+        { x: bounds.x, y: bounds.y },
+        { x: bounds.x + bounds.w, y: bounds.y },
+        { x: bounds.x, y: bounds.y + bounds.h },
+        { x: bounds.x + bounds.w, y: bounds.y + bounds.h }
+      ].forEach(h =>
+        ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8)
+      );
+    }
+
+    // Marquee selection
+    if (selectingBox) {
+      const x = Math.min(selectStartX, selectCurrentX) - cameraX;
+      const y = Math.min(selectStartY, selectCurrentY) - cameraY;
+      const w = Math.abs(selectCurrentX - selectStartX);
+      const h = Math.abs(selectCurrentY - selectStartY);
+      ctx.strokeStyle = '#0ff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(0,255,255,0.2)';
+      ctx.fillRect(x, y, w, h);
+    }
+
+    // Compact JSON output
+    output.value = world.platforms
+      .map(p => JSON.stringify({
+        x: p.x, y: p.y, w: p.w, h: p.h,
+        rotation: p.rotation, material: p.material
+      }))
+      .join('\n');
+  }
+
+  // --- Buttons ---
+  addBtn.addEventListener('click', () => {
+    world.platforms.push({
+      x: cameraX + 100,
+      y: cameraY + 100,
+      w: 200,
+      h: 20,
+      rotation: parseInt(rotationInput.value, 10) || 0,
+      material: materialSelect.value
+    });
+    selectedIndices = [world.platforms.length - 1];
+  });
+
+  deleteBtn.addEventListener('click', () => {
+    world.platforms = world.platforms.filter((_, i) => !selectedIndices.includes(i));
+    selectedIndices = [];
+  });
+
+  saveBtn.addEventListener('click', () => {
+    output.value = world.platforms.map(p => JSON.stringify(p)).join('\n');
+  });
+
+  copyBtn.addEventListener('click', () => {
+    output.select();
+    document.execCommand('copy');
+    alert('JSON copied!');
+  });
+
+  loadFile.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try {
+        const data = JSON.parse(evt.target.result);
+        world.platforms = Array.isArray(data) ? data : data.platforms || [];
+        selectedIndices = [];
+      } catch {
+        alert('Error loading map');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  // --- Load from text ---
+  loadTextBtn.addEventListener('click', () => {
+    try {
+      const raw = jsonInput.value.trim();
+      let parsed;
+
+      if (raw.startsWith('[') && raw.endsWith(']')) {
+        parsed = JSON.parse(raw);
+      } else {
+        const lines = raw.split('\n')
+          .map(l => l.trim())
+          .filter(Boolean)
+          .map(l => l.replace(/,?\s*$/, ''));
+        parsed = JSON.parse(`[${lines.join(',')}]`);
+      }
+
+      if (!Array.isArray(parsed)) throw new Error('Expected an array');
+
+      world.platforms = parsed.map(p => ({
+        x: Number(p.x), y: Number(p.y),
+        w: Number(p.w), h: Number(p.h),
+        rotation: Number(p.rotation),
+        material: String(p.material)
+      }));
+      selectedIndices = [];
+      redraw();
+    } catch (err) {
+      alert(`Invalid JSON text: ${err.message}`);
+    }
+  });
+
+  // --- Mouse events ---
+  let selectingBox = false;
+  let selectStartX = 0, selectStartY = 0;
+  let selectCurrentX = 0, selectCurrentY = 0;
+
+  canvas.addEventListener('mousedown', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left + cameraX;
+    const my = e.clientY - rect.top + cameraY;
+
+    const found = world.platforms.findIndex(
+      p => mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h
+    );
+
+    if (found === -1) {
+      selectingBox = true;
+      selectStartX = mx; selectStartY = my;
+      selectCurrentX = mx; selectCurrentY = my;
+      selectedIndices = [];
+    } else {
+      selectedIndices = [found];
+      const p = world.platforms[found];
+      draggingPlatform = true;
+      dragOffsetX = mx - p.x;
+      dragOffsetY = my - p.y;
+    }
+  });
+
+  canvas.addEventListener('mousemove', e => {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left + cameraX;
     const my = e.clientY - rect.top + cameraY;
@@ -404,7 +593,7 @@ loadTextBtn.addEventListener('click', () => {
     rotatingPlatform = false;
   });
 
-  // Camera scrolling
+  // --- Camera scrolling ---
   document.addEventListener('keydown', e => {
     const step = 50;
     if (e.key === 'ArrowLeft' || e.key === 'a') {
@@ -421,13 +610,13 @@ loadTextBtn.addEventListener('click', () => {
     }
   });
 
-  // Auto-update loop
+  // --- Auto-update loop ---
   function gameLoop() {
     redraw();
     requestAnimationFrame(gameLoop);
   }
 
-  // Initialize
+  // --- Initialize ---
   window.addEventListener('load', () => {
     document.getElementById('loading').style.display = 'none';
     resizeCanvas();
@@ -436,4 +625,3 @@ loadTextBtn.addEventListener('click', () => {
 </script>
 </body>
 </html>
-
