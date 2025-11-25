@@ -279,15 +279,69 @@ loadTextBtn.addEventListener('click', () => {
     }
 });
 
-// --- Unified mouse handlers ---
+// --- Helpers for rotated hitboxes ---
+function getRotatedCorners(p) {
+    const cx = p.x + p.w / 2;
+    const cy = p.y + p.h / 2;
+    const rad = (p.rotation * Math.PI) / 180;
+
+    const corners = [
+        { x: p.x,       y: p.y },
+        { x: p.x + p.w, y: p.y },
+        { x: p.x + p.w, y: p.y + p.h },
+        { x: p.x,       y: p.y + p.h }
+    ];
+
+    return corners.map(c => {
+        const dx = c.x - cx;
+        const dy = c.y - cy;
+        return {
+            x: cx + dx * Math.cos(rad) - dy * Math.sin(rad),
+            y: cy + dx * Math.sin(rad) + dy * Math.cos(rad)
+        };
+    });
+}
+
+function pointInPolygon(px, py, corners) {
+    let inside = false;
+    for (let i = 0, j = corners.length - 1; i < corners.length; j = i++) {
+        const xi = corners[i].x, yi = corners[i].y;
+        const xj = corners[j].x, yj = corners[j].y;
+        const intersect = ((yi > py) !== (yj > py)) &&
+                          (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
+
+function rectIntersectsPolygon(x1, y1, x2, y2, corners) {
+    // polygon corner inside rect
+    if (corners.some(c => c.x >= x1 && c.x <= x2 && c.y >= y1 && c.y <= y2)) {
+        return true;
+    }
+    // rect corner inside polygon
+    const rectCorners = [
+        { x: x1, y: y1 },
+        { x: x2, y: y1 },
+        { x: x2, y: y2 },
+        { x: x1, y: y2 }
+    ];
+    if (rectCorners.some(rc => pointInPolygon(rc.x, rc.y, corners))) {
+        return true;
+    }
+    return false;
+}
+
+// --- Group scaling state ---
 let originalPlatforms = [];
 
+// --- Mouse handlers ---
 canvas.addEventListener('mousedown', e => {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left + cameraX;
     const my = e.clientY - rect.top + cameraY;
 
-    // --- Group scaling check ---
+    // Group scaling check
     if (selectedIndices.length > 1) {
         const bounds = getGroupBounds();
         const corners = [
@@ -300,8 +354,6 @@ canvas.addEventListener('mousedown', e => {
             scalingGroup = true;
             startBounds = bounds;
             startMouse = { mx, my };
-
-            // snapshot each platform relative to group bounds
             originalPlatforms = selectedIndices.map(i => {
                 const p = world.platforms[i];
                 return {
@@ -316,10 +368,11 @@ canvas.addEventListener('mousedown', e => {
         }
     }
 
-    // --- Normal selection / dragging ---
-    const found = world.platforms.findIndex(
-        p => mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h
-    );
+    // Normal selection / dragging
+    const found = world.platforms.findIndex(p => {
+        const corners = getRotatedCorners(p);
+        return pointInPolygon(mx, my, corners);
+    });
 
     if (found === -1) {
         selectingBox = true;
@@ -361,11 +414,10 @@ canvas.addEventListener('mousemove', e => {
     }
 
     if (scalingGroup) {
-        // normal scale factors
         let scaleX = (mx - startBounds.x) / startBounds.w;
         let scaleY = (my - startBounds.y) / startBounds.h;
 
-        // if Shift is held → uniform scaling
+        // Shift → uniform scaling
         if (e.shiftKey) {
             const uniform = Math.max(scaleX, scaleY);
             scaleX = uniform;
@@ -382,7 +434,6 @@ canvas.addEventListener('mousemove', e => {
     }
 });
 
-
 canvas.addEventListener('mouseup', () => {
     if (selectingBox) {
         selectingBox = false;
@@ -393,13 +444,8 @@ canvas.addEventListener('mouseup', () => {
 
         selectedIndices = world.platforms
             .map((p, i) => {
-                const intersects = !(
-                    p.x + p.w < x1 ||
-                    p.x > x2 ||
-                    p.y + p.h < y1 ||
-                    p.y > y2
-                );
-                return intersects ? i : null;
+                const corners = getRotatedCorners(p);
+                return rectIntersectsPolygon(x1, y1, x2, y2, corners) ? i : null;
             })
             .filter(i => i !== null);
     }
