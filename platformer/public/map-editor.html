@@ -83,14 +83,12 @@
 
   // --- Canvas resize ---
   function resizeCanvas() {
-    canvas.width =
-      window.innerWidth -
-      document.getElementById('jsonPanel').offsetWidth -
-      document.getElementById('toolbox').offsetWidth -
-      document.getElementById('infoPanel').offsetWidth;
-    canvas.height = window.innerHeight;
-  }
-  window.addEventListener('resize', resizeCanvas);
+      const jsonPanel = document.getElementById('jsonPanel');
+      const panelWidth = jsonPanel ? jsonPanel.offsetWidth : 0;
+      canvas.width = window.innerWidth - panelWidth;
+      canvas.height = window.innerHeight;
+    }
+    
 
   // --- Helpers ---
   function getHandles(p) {
