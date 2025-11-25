@@ -109,7 +109,7 @@
     ];
   }
 
-   // --- Helpers ---
+// --- Helpers ---
 function getGroupBounds() {
     const selected = selectedIndices.map(i => world.platforms[i]);
     const minX = Math.min(...selected.map(p => p.x));
@@ -280,6 +280,10 @@ loadTextBtn.addEventListener('click', () => {
 });
 
 // --- Unified mouse handlers ---
+let scalingGroup = false;
+let startBounds, startMouse;
+let originalPlatforms = [];
+
 canvas.addEventListener('mousedown', e => {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left + cameraX;
@@ -298,6 +302,10 @@ canvas.addEventListener('mousedown', e => {
             scalingGroup = true;
             startBounds = bounds;
             startMouse = { mx, my };
+            originalPlatforms = selectedIndices.map(i => {
+                const p = world.platforms[i];
+                return { i, x: p.x, y: p.y, w: p.w, h: p.h };
+            });
             return;
         }
     }
@@ -344,23 +352,23 @@ canvas.addEventListener('mousemove', e => {
         });
     }
 
-    if (scalingGroup) {
+        if (scalingGroup) {
         const scaleX = (mx - startBounds.x) / startBounds.w;
         const scaleY = (my - startBounds.y) / startBounds.h;
         const cx = startBounds.x + startBounds.w / 2;
         const cy = startBounds.y + startBounds.h / 2;
 
-                selectedIndices.forEach(i => {
-            const p = world.platforms[i];
-            const px = p.x + p.w / 2;
-            const py = p.y + p.h / 2;
+        originalPlatforms.forEach(op => {
+            const p = world.platforms[op.i];
+            const px = op.x + op.w / 2;
+            const py = op.y + op.h / 2;
             const dx = px - cx;
             const dy = py - cy;
 
-            p.x = cx + dx * scaleX - (p.w * scaleX) / 2;
-            p.y = cy + dy * scaleY - (p.h * scaleY) / 2;
-            p.w = p.w * scaleX;
-            p.h = p.h * scaleY;
+            p.x = cx + dx * scaleX - (op.w * scaleX) / 2;
+            p.y = cy + dy * scaleY - (op.h * scaleY) / 2;
+            p.w = op.w * scaleX;
+            p.h = op.h * scaleY;
         });
     }
 });
@@ -418,5 +426,7 @@ window.addEventListener('load', () => {
     resizeCanvas();
     gameLoop();
 });
+
 </script>
-</body>html>
+</body>
+<html>
