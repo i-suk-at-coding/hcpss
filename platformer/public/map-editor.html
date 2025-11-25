@@ -23,58 +23,52 @@
     #infoPanel ul { list-style:none; padding:0; margin:0; }
     #infoPanel li { font-size:13px; margin:6px 0; }
     #loading { position:fixed; top:0; left:0; right:0; bottom:0; background:#0f0f0f; color:#fff; display:flex; align-items:center; justify-content:center; font-size:20px; z-index:9999; }
+    #toolbar {display:flex;gap:8px;padding:6px;background:#333;color:#fff;align-items:center;}
+    #toolbar button,#toolbar select,#toolbar input {padding:4px 8px;font-size:14px;}
+    #jsonPanel {position:absolute;top:50px;right:0;width:300px;height:calc(100% - 50px);background:#111;color:#fff;display:flex;flex-direction:column;}
+    #editorOutput,#jsonInput {flex:1;margin:4px;font-size:12px;background:#222;color:#0ff;}
+    #loading {position:fixed;top:0;left:0;width:100%;height:100%;background:#222;color:#fff;display:flex;align-items:center;justify-content:center;font-size:2em;z-index:9999;}
+
   </style>
 </head>
 <body>
   <div id="loading">Loading map editor...</div>
 
-  <div id="toolbox">
-    <h3>Tools</h3>
-    <label>Material:
-      <select id="materialSelect">
-        <option value="normal">Normal</option>
-        <option value="ice">Ice</option>
-        <option value="lava">Lava</option>
-        <option value="bounce">Bounce</option>
-        <option value="sticky">Sticky</option>
-      </select>
-    </label>
-    <label>Rotation:
-      <input type="number" id="rotationInput" value="0" step="5">°
-    </label>
-    <button id="addBtn">Add Platform</button>
-    <button id="deleteBtn">Delete Selected</button>
-    <button id="saveBtn">Save JSON</button>
-    <label>Load Map:
-      <input type="file" id="loadFile" accept="application/json">
-    </label>
+  <body>
+  <!-- Toolbar at the top -->
+  <div id="toolbar">
+    <button id="addBtn">Add</button>
+    <button id="deleteBtn">Delete</button>
+    <button id="saveBtn">Save</button>
+    <button id="copyBtn">Copy</button>
+    <input type="file" id="loadFile" />
+    <select id="materialSelect">
+      <option value="normal">Normal</option>
+      <option value="ice">Ice</option>
+      <option value="lava">Lava</option>
+      <option value="bounce">Bounce</option>
+      <option value="sticky">Sticky</option>
+    </select>
+    <button id="helpBtn">Help</button>
+  </div>
+
+  <!-- Canvas area -->
+  <canvas id="canvas"></canvas>
+
+  <!-- JSON panel -->
+  <div id="jsonPanel">
+    <textarea id="editorOutput"></textarea>
     <textarea id="jsonInput" placeholder="Paste JSON here"></textarea>
     <button id="loadTextBtn">Load from Text</button>
   </div>
 
-  <div id="editorArea">
-    <canvas id="canvas"></canvas>
-  </div>
-
-  <div id="jsonPanel">
-    <h3>JSON Output</h3>
-    <textarea id="editorOutput" readonly></textarea>
-    <button id="copyBtn">Copy JSON</button>
-  </div>
-
-  <div id="infoPanel">
-    <h3>Instructions</h3>
-    <ul>
-      <li>Click a block to select it.</li>
-      <li>Drag inside block to move it.</li>
-      <li>Drag corner handles to resize.</li>
-      <li>Drag cyan circle above block to rotate.</li>
-      <li>Use arrow keys/WASD to scroll camera.</li>
-      <li>Choose material & rotation before adding new blocks.</li>
-    </ul>
-  </div>
-
+  <!-- Loading overlay -->
+  <div id="loading">Loading...</div>
 <script>
+  document.getElementById('helpBtn').addEventListener('click', () => {
+      alert("Controls:\n- Arrow keys/WASD: Move camera\n- Click+Drag: Move block\n- Drag box: Select multiple\n- Rotation handle above block: Rotate\n- Toolbar buttons: Add/Delete/Save/Copy/Load");
+  });
+
   // --- World and camera state ---
   const worldWidth = 4000, worldHeight = 2000;
   let cameraX = 0, cameraY = 0;
@@ -209,7 +203,7 @@
       y: cameraY + 100,
       w: 200,
       h: 20,
-      rotation: parseInt(rotationInput.value, 10) || 0,
+      rotation: 0,
       material: materialSelect.value
     });
     selectedIndices = [world.platforms.length - 1];
@@ -451,7 +445,7 @@
       y: cameraY + 100,
       w: 200,
       h: 20,
-      rotation: parseInt(rotationInput.value, 10) || 0,
+      rotation: 0,
       material: materialSelect.value
     });
     selectedIndices = [world.platforms.length - 1];
