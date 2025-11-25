@@ -289,11 +289,6 @@
     }
   });
 
-  // --- Mouse events ---
-  let selectingBox = false;
-  let selectStartX = 0, selectStartY = 0;
-  let selectCurrentX = 0, selectCurrentY = 0;
-
   canvas.addEventListener('mousedown', e => {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left + cameraX;
