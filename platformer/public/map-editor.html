@@ -361,8 +361,16 @@ canvas.addEventListener('mousemove', e => {
     }
 
     if (scalingGroup) {
-        const scaleX = (mx - startBounds.x) / startBounds.w;
-        const scaleY = (my - startBounds.y) / startBounds.h;
+        // normal scale factors
+        let scaleX = (mx - startBounds.x) / startBounds.w;
+        let scaleY = (my - startBounds.y) / startBounds.h;
+
+        // if Shift is held → uniform scaling
+        if (e.shiftKey) {
+            const uniform = Math.max(scaleX, scaleY);
+            scaleX = uniform;
+            scaleY = uniform;
+        }
 
         originalPlatforms.forEach(op => {
             const p = world.platforms[op.i];
@@ -373,6 +381,7 @@ canvas.addEventListener('mousemove', e => {
         });
     }
 });
+
 
 canvas.addEventListener('mouseup', () => {
     if (selectingBox) {
