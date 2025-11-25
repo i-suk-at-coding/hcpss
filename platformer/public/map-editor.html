@@ -106,6 +106,7 @@
     ];
   }
 
+    // --- Helpers for group transforms ---
   function getGroupBounds() {
     const selected = selectedIndices.map(i => world.platforms[i]);
     const minX = Math.min(...selected.map(p => p.x));
@@ -290,11 +291,16 @@
       selectCurrentX = mx; selectCurrentY = my;
       selectedIndices = [];
     } else {
-      selectedIndices = [found];
-      const p = world.platforms[found];
+      if (!selectedIndices.includes(found)) {
+        selectedIndices = [found];
+      }
+      // prepare drag offsets for all selected
+      dragOffsets = {};
+      selectedIndices.forEach(i => {
+        const p = world.platforms[i];
+        dragOffsets[i] = { dx: mx - p.x, dy: my - p.y };
+      });
       draggingPlatform = true;
-      dragOffsetX = mx - p.x;
-      dragOffsetY = my - p.y;
     }
   });
 
@@ -309,11 +315,11 @@
       return;
     }
 
-    if (draggingPlatform && selectedIndices.length > 0) {
+  if (draggingPlatform && selectedIndices.length > 0) {
       selectedIndices.forEach(i => {
         const p = world.platforms[i];
-        p.x = mx - dragOffsetX;
-        p.y = my - dragOffsetY;
+        p.x = mx - dragOffsets[i].dx;
+        p.y = my - dragOffsets[i].dy;
       });
     }
   });
@@ -343,7 +349,6 @@
     draggingPlatform = false;
     rotatingPlatform = false;
   });
-
   // --- Camera scrolling ---
   document.addEventListener('keydown', e => {
     const step = 50;
