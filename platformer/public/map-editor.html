@@ -72,7 +72,7 @@
     </ul>
   </div>
 
-  <script>
+ <script>
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
   const output = document.getElementById('editorOutput');
@@ -83,11 +83,13 @@
   const loadFile = document.getElementById('loadFile');
   const materialSelect = document.getElementById('materialSelect');
   const rotationInput = document.getElementById('rotationInput');
+  const loadTextBtn = document.getElementById('loadTextBtn');   // new button
+  const jsonInput = document.getElementById('jsonInput');       // new textarea
 
   const worldWidth = 4000, worldHeight = 2000;
   let cameraX = 0, cameraY = 0;
   let world = { platforms: [] };
-  let selectedIndices = []; // array for selection
+  let selectedIndices = [];
   let dragHandle = null, draggingPlatform = false, rotatingPlatform = false;
   let dragOffsetX = 0, dragOffsetY = 0;
 
@@ -108,6 +110,15 @@
       { x: p.x, y: p.y + p.h },
       { x: p.x + p.w, y: p.y + p.h }
     ];
+  }
+
+  function getGroupBounds() {
+    const selected = selectedIndices.map(i => world.platforms[i]);
+    const minX = Math.min(...selected.map(p => p.x));
+    const minY = Math.min(...selected.map(p => p.y));
+    const maxX = Math.max(...selected.map(p => p.x + p.w));
+    const maxY = Math.max(...selected.map(p => p.y + p.h));
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
   }
 
   function redraw() {
@@ -164,12 +175,7 @@
     if (selectedIndices.length > 1) {
       const bounds = getGroupBounds();
       ctx.strokeStyle = '#0ff';
-      ctx.strokeRect(
-        bounds.x - cameraX,
-        bounds.y - cameraY,
-        bounds.w,
-        bounds.h
-      );
+      ctx.strokeRect(bounds.x - cameraX, bounds.y - cameraY, bounds.w, bounds.h);
 
       // Group handles
       const handles = [
@@ -197,8 +203,8 @@
       ctx.fillRect(x, y, w, h);
     }
 
-    // Update JSON output
-    output.value = JSON.stringify(world.platforms, null, 2);
+    // Compact JSON output: one block per line
+    output.value = world.platforms.map(p => JSON.stringify(p)).join("\n");
   }
 
   addBtn.addEventListener('click', () => {
@@ -224,7 +230,7 @@
   });
 
   saveBtn.addEventListener('click', () => {
-    output.value = JSON.stringify(world.platforms, null, 2);
+    output.value = world.platforms.map(p => JSON.stringify(p)).join("\n");
   });
 
   copyBtn.addEventListener('click', () => {
@@ -247,6 +253,18 @@
       }
     };
     reader.readAsText(file);
+  });
+
+  // Load JSON from text area
+  loadTextBtn.addEventListener('click', () => {
+    try {
+      const data = "[" + jsonInput.value.split("\n").filter(l => l.trim()).join(",") + "]";
+      world.platforms = JSON.parse(data);
+      selectedIndices = [];
+      redraw();
+    } catch (err) {
+      alert("Invalid JSON text");
+    }
   });
 
   // Mouse events
@@ -279,7 +297,7 @@
     }
   });
 
-  canvas.addEventListener('mousemove', e => {
+    canvas.addEventListener('mousemove', e => {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left + cameraX;
     const my = e.clientY - rect.top + cameraY;
@@ -317,7 +335,7 @@
           );
           return intersects ? i : null;
         })
-             .filter(i => i !== null);
+        .filter(i => i !== null);
     }
 
     dragHandle = null;
