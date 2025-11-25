@@ -207,12 +207,11 @@
 
     // Compact JSON output: one block per line
     output.value = world.platforms
-  .map(p => JSON.stringify({
+    .map(p => JSON.stringify({
     x: p.x, y: p.y, w: p.w, h: p.h, rotation: p.rotation, material: p.material
-  }))
-  .join('\n');
-
-  }
+    }))
+    .join('\n');
+    }
 
   addBtn.addEventListener('click', () => {
     const newPlat = {
@@ -435,9 +434,6 @@ loadTextBtn.addEventListener('click', () => {
     gameLoop();
   });
 </script>
-</body>
-</html>
-
 </body>
 </html>
 
