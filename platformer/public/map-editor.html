@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Map Editor</title>
   <style>
-    body { margin:0; height:100vh; display:flex; font-family:"Segoe UI",sans-serif; background:#0f0f0f; color:#eee; }
+    body { margin:0; display:flex; flex-direction:column; height:100vh; }
     #editorArea { flex:1; display:flex; flex-direction:column; background:#1a1a1a; }
     #canvas { flex:1; background:#222; }
     #jsonPanel { width:360px; background:#121212; border-left:1px solid #333; display:flex; flex-direction:column; }
@@ -287,7 +287,7 @@ canvas.addEventListener('mousedown', e => {
     const mx = e.clientX - rect.left + cameraX;
     const my = e.clientY - rect.top + cameraY;
 
-    // Group scaling check
+    // --- Group scaling check ---
     if (selectedIndices.length > 1) {
         const bounds = getGroupBounds();
         const corners = [
@@ -300,23 +300,33 @@ canvas.addEventListener('mousedown', e => {
             scalingGroup = true;
             startBounds = bounds;
             startMouse = { mx, my };
+
+            // snapshot each platform relative to group bounds
             originalPlatforms = selectedIndices.map(i => {
                 const p = world.platforms[i];
-                return { i, x: p.x, y: p.y, w: p.w, h: p.h };
+                return {
+                    i,
+                    relX: (p.x - bounds.x) / bounds.w,
+                    relY: (p.y - bounds.y) / bounds.h,
+                    relW: p.w / bounds.w,
+                    relH: p.h / bounds.h
+                };
             });
             return;
         }
     }
 
-    // Normal selection / dragging
+    // --- Normal selection / dragging ---
     const found = world.platforms.findIndex(
         p => mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h
     );
 
     if (found === -1) {
         selectingBox = true;
-        selectStartX = mx; selectStartY = my;
-        selectCurrentX = mx; selectCurrentY = my;
+        selectStartX = mx;
+        selectStartY = my;
+        selectCurrentX = mx;
+        selectCurrentY = my;
         selectedIndices = [];
     } else {
         if (!selectedIndices.includes(found)) {
@@ -350,23 +360,16 @@ canvas.addEventListener('mousemove', e => {
         });
     }
 
-        if (scalingGroup) {
+    if (scalingGroup) {
         const scaleX = (mx - startBounds.x) / startBounds.w;
         const scaleY = (my - startBounds.y) / startBounds.h;
-        const cx = startBounds.x + startBounds.w / 2;
-        const cy = startBounds.y + startBounds.h / 2;
 
         originalPlatforms.forEach(op => {
             const p = world.platforms[op.i];
-            const px = op.x + op.w / 2;
-            const py = op.y + op.h / 2;
-            const dx = px - cx;
-            const dy = py - cy;
-
-            p.x = cx + dx * scaleX - (op.w * scaleX) / 2;
-            p.y = cy + dy * scaleY - (op.h * scaleY) / 2;
-            p.w = op.w * scaleX;
-            p.h = op.h * scaleY;
+            p.x = startBounds.x + op.relX * startBounds.w * scaleX;
+            p.y = startBounds.y + op.relY * startBounds.h * scaleY;
+            p.w = op.relW * startBounds.w * scaleX;
+            p.h = op.relH * startBounds.h * scaleY;
         });
     }
 });
