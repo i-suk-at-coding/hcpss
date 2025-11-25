@@ -109,18 +109,18 @@
     ];
   }
 
-    // --- Helpers for group transforms ---
-  function getGroupBounds() {
+   // --- Helpers ---
+function getGroupBounds() {
     const selected = selectedIndices.map(i => world.platforms[i]);
     const minX = Math.min(...selected.map(p => p.x));
     const minY = Math.min(...selected.map(p => p.y));
     const maxX = Math.max(...selected.map(p => p.x + p.w));
     const maxY = Math.max(...selected.map(p => p.y + p.h));
     return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
-  }
+}
 
-  // --- Redraw everything ---
-  function redraw() {
+// --- Redraw everything ---
+function redraw() {
     ctx.fillStyle = '#222';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -130,261 +130,293 @@
 
     // Platforms
     world.platforms.forEach((p, i) => {
-      ctx.save();
-      ctx.translate(p.x - cameraX + p.w / 2, p.y - cameraY + p.h / 2);
-      ctx.rotate((p.rotation * Math.PI) / 180);
-      ctx.fillStyle =
-        p.material === 'ice'    ? '#3b82f6' :
-        p.material === 'lava'   ? '#ef4444' :
-        p.material === 'bounce' ? '#facc15' :
-        p.material === 'sticky' ? '#10b981' :
-                                  '#888';
-      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-      ctx.restore();
+        ctx.save();
+        ctx.translate(p.x - cameraX + p.w / 2, p.y - cameraY + p.h / 2);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle =
+            p.material === 'ice'    ? '#3b82f6' :
+            p.material === 'lava'   ? '#ef4444' :
+            p.material === 'bounce' ? '#facc15' :
+            p.material === 'sticky' ? '#10b981' :
+                                      '#888';
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
 
-      // Selection handles
-      if (selectedIndices.includes(i)) {
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
+        // Selection handles
+        if (selectedIndices.includes(i)) {
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
 
-        // Corner handles
-        ctx.fillStyle = '#fff';
-        getHandles(p).forEach(h =>
-          ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8)
-        );
+            // Corner handles
+            ctx.fillStyle = '#fff';
+            getHandles(p).forEach(h =>
+                ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8)
+            );
 
-        // Rotation handle
-        const cx = p.x + p.w / 2;
-        const hy = p.y - 40;
-        ctx.fillStyle = '#0ff';
-        ctx.beginPath();
-        ctx.arc(cx - cameraX, hy - cameraY, 6, 0, Math.PI * 2);
-        ctx.fill();
-        p.rotationHandle = { x: cx, y: hy };
-      }
+            // Rotation handle
+            const cx = p.x + p.w / 2;
+            const hy = p.y - 40;
+            ctx.fillStyle = '#0ff';
+            ctx.beginPath();
+            ctx.arc(cx - cameraX, hy - cameraY, 6, 0, Math.PI * 2);
+            ctx.fill();
+            p.rotationHandle = { x: cx, y: hy };
+        }
     });
 
     // Group box
     if (selectedIndices.length > 1) {
-      const bounds = getGroupBounds();
-      ctx.strokeStyle = '#0ff';
-      ctx.strokeRect(bounds.x - cameraX, bounds.y - cameraY, bounds.w, bounds.h);
+        const bounds = getGroupBounds();
+        ctx.strokeStyle = '#0ff';
+        ctx.strokeRect(bounds.x - cameraX, bounds.y - cameraY, bounds.w, bounds.h);
 
-      ctx.fillStyle = '#0ff';
-      [
-        { x: bounds.x, y: bounds.y },
-        { x: bounds.x + bounds.w, y: bounds.y },
-        { x: bounds.x, y: bounds.y + bounds.h },
-        { x: bounds.x + bounds.w, y: bounds.y + bounds.h }
-      ].forEach(h =>
-        ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8)
-      );
+        ctx.fillStyle = '#0ff';
+        [
+            { x: bounds.x, y: bounds.y },
+            { x: bounds.x + bounds.w, y: bounds.y },
+            { x: bounds.x, y: bounds.y + bounds.h },
+            { x: bounds.x + bounds.w, y: bounds.y + bounds.h }
+        ].forEach(h =>
+            ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8)
+        );
     }
 
     // Marquee selection
     if (selectingBox) {
-      const x = Math.min(selectStartX, selectCurrentX) - cameraX;
-      const y = Math.min(selectStartY, selectCurrentY) - cameraY;
-      const w = Math.abs(selectCurrentX - selectStartX);
-      const h = Math.abs(selectCurrentY - selectStartY);
-      ctx.strokeStyle = '#0ff';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x, y, w, h);
-      ctx.fillStyle = 'rgba(0,255,255,0.2)';
-      ctx.fillRect(x, y, w, h);
+        const x = Math.min(selectStartX, selectCurrentX) - cameraX;
+        const y = Math.min(selectStartY, selectCurrentY) - cameraY;
+        const w = Math.abs(selectCurrentX - selectStartX);
+        const h = Math.abs(selectCurrentY - selectStartY);
+        ctx.strokeStyle = '#0ff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, w, h);
+        ctx.fillStyle = 'rgba(0,255,255,0.2)';
+        ctx.fillRect(x, y, w, h);
     }
 
     // Compact JSON output
     output.value = world.platforms
-      .map(p => JSON.stringify({
-        x: p.x, y: p.y, w: p.w, h: p.h,
-        rotation: p.rotation, material: p.material
-      }))
-      .join(',\n');
-  }
+        .map(p => JSON.stringify({
+            x: p.x, y: p.y, w: p.w, h: p.h,
+            rotation: p.rotation, material: p.material
+        }))
+        .join(',\n');
+}
 
-  // --- Buttons ---
-  addBtn.addEventListener('click', () => {
+// --- Buttons ---
+addBtn.addEventListener('click', () => {
     world.platforms.push({
-      x: cameraX + 100,
-      y: cameraY + 100,
-      w: 200,
-      h: 20,
-      rotation: 0,
-      material: materialSelect.value
+        x: cameraX + 100,
+        y: cameraY + 100,
+        w: 200,
+        h: 20,
+        rotation: 0,
+        material: materialSelect.value
     });
     selectedIndices = [world.platforms.length - 1];
-  });
+});
 
-  deleteBtn.addEventListener('click', () => {
+deleteBtn.addEventListener('click', () => {
     world.platforms = world.platforms.filter((_, i) => !selectedIndices.includes(i));
     selectedIndices = [];
-  });
+});
 
-  saveBtn.addEventListener('click', () => {
+saveBtn.addEventListener('click', () => {
     output.value = world.platforms.map(p => JSON.stringify(p)).join('\n');
-  });
+});
 
-  copyBtn.addEventListener('click', () => {
+copyBtn.addEventListener('click', () => {
     output.select();
     document.execCommand('copy');
     alert('JSON copied!');
-  });
+});
 
-  loadFile.addEventListener('change', e => {
+loadFile.addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = evt => {
-      try {
-        const data = JSON.parse(evt.target.result);
-        world.platforms = Array.isArray(data) ? data : data.platforms || [];
-        selectedIndices = [];
-      } catch {
-        alert('Error loading map');
-      }
+        try {
+            const data = JSON.parse(evt.target.result);
+            world.platforms = Array.isArray(data) ? data : data.platforms || [];
+            selectedIndices = [];
+        } catch {
+            alert('Error loading map');
+        }
     };
     reader.readAsText(file);
-  });
+});
 
-  // --- Load from text ---
-  loadTextBtn.addEventListener('click', () => {
+// --- Load from text ---
+loadTextBtn.addEventListener('click', () => {
     try {
-      const raw = jsonInput.value.trim();
-      let parsed;
+        const raw = jsonInput.value.trim();
+        let parsed;
 
-      if (raw.startsWith('[') && raw.endsWith(']')) {
-        parsed = JSON.parse(raw);
-      } else {
-        const lines = raw.split('\n')
-          .map(l => l.trim())
-          .filter(Boolean)
-          .map(l => l.replace(/,?\s*$/, ''));
-        parsed = JSON.parse(`[${lines.join(',')}]`);
-      }
+        if (raw.startsWith('[') && raw.endsWith(']')) {
+            parsed = JSON.parse(raw);
+        } else {
+            const lines = raw.split('\n')
+                .map(l => l.trim())
+                .filter(Boolean)
+                .map(l => l.replace(/,?\s*$/, ''));
+            parsed = JSON.parse(`[${lines.join(',')}]`);
+        }
 
-      if (!Array.isArray(parsed)) throw new Error('Expected an array');
+        if (!Array.isArray(parsed)) throw new Error('Expected an array');
 
-      world.platforms = parsed.map(p => ({
-        x: Number(p.x), y: Number(p.y),
-        w: Number(p.w), h: Number(p.h),
-        rotation: Number(p.rotation),
-        material: String(p.material)
-      }));
-      selectedIndices = [];
-      redraw();
+        world.platforms = parsed.map(p => ({
+            x: Number(p.x), y: Number(p.y),
+            w: Number(p.w), h: Number(p.h),
+            rotation: Number(p.rotation),
+            material: String(p.material)
+        }));
+        selectedIndices = [];
+        redraw();
     } catch (err) {
-      alert(`Invalid JSON text: ${err.message}`);
+        alert(`Invalid JSON text: ${err.message}`);
     }
-  });
+});
 
-  canvas.addEventListener('mousedown', e => {
+// --- Unified mouse handlers ---
+canvas.addEventListener('mousedown', e => {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left + cameraX;
     const my = e.clientY - rect.top + cameraY;
 
-    // --- group scaling check first ---
+    // Group scaling check
     if (selectedIndices.length > 1) {
-      const bounds = getGroupBounds();
-      const corners = [
-        {x:bounds.x,y:bounds.y},
-        {x:bounds.x+bounds.w,y:bounds.y},
-        {x:bounds.x,y:bounds.y+bounds.h},
-        {x:bounds.x+bounds.w,y:bounds.y+bounds.h}
-      ];
-      if (corners.some(c => Math.hypot(mx-c.x,my-c.y)<10)) {
-        scalingGroup = true;
-        startBounds = bounds;
-        startMouse = {mx,my};
-        return; // stop here so we don’t trigger selection logic
-      }
+        const bounds = getGroupBounds();
+        const corners = [
+            { x: bounds.x, y: bounds.y },
+            { x: bounds.x + bounds.w, y: bounds.y },
+            { x: bounds.x, y: bounds.y + bounds.h },
+            { x: bounds.x + bounds.w, y: bounds.y + bounds.h }
+        ];
+        if (corners.some(c => Math.hypot(mx - c.x, my - c.y) < 10)) {
+            scalingGroup = true;
+            startBounds = bounds;
+            startMouse = { mx, my };
+            return;
+        }
     }
 
-    // --- normal selection / dragging ---
+    // Normal selection / dragging
     const found = world.platforms.findIndex(
-      p => mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h
+        p => mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h
     );
 
-  if (found === -1) {
-    // click empty space → start marquee
-    selectingBox = true;
-    selectStartX = mx; selectStartY = my;
-    selectCurrentX = mx; selectCurrentY = my;
-    selectedIndices = [];
-  } else {
-    // clicked a block
-    if (!selectedIndices.includes(found)) {
-      selectedIndices = [found];
+    if (found === -1) {
+        selectingBox = true;
+        selectStartX = mx; selectStartY = my;
+        selectCurrentX = mx; selectCurrentY = my;
+        selectedIndices = [];
+    } else {
+        if (!selectedIndices.includes(found)) {
+            selectedIndices = [found];
+        }
+        dragOffsets = {};
+        selectedIndices.forEach(i => {
+            const p = world.platforms[i];
+            dragOffsets[i] = { dx: mx - p.x, dy: my - p.y };
+        });
+        draggingPlatform = true;
     }
-    // prepare drag offsets
-    dragOffsets = {};
-      selectedIndices.forEach(i => {
-        const p = world.platforms[i];
-        dragOffsets[i] = { dx: mx - p.x, dy: my - p.y };
-      });
-      draggingPlatform = true;
+});
+
+canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left + cameraX;
+    const my = e.clientY - rect.top + cameraY;
+
+    if (selectingBox) {
+        selectCurrentX = mx;
+        selectCurrentY = my;
+        return;
     }
-  });
 
+    if (draggingPlatform && selectedIndices.length > 0) {
+        selectedIndices.forEach(i => {
+            const p = world.platforms[i];
+            p.x = mx - dragOffsets[i].dx;
+            p.y = my - dragOffsets[i].dy;
+        });
+    }
 
-  canvas.addEventListener('mousemove', e => {
     if (scalingGroup) {
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left + cameraX;
-      const my = e.clientY - rect.top + cameraY;
+        const scaleX = (mx - startBounds.x) / startBounds.w;
+        const scaleY = (my - startBounds.y) / startBounds.h;
+        const cx = startBounds.x + startBounds.w / 2;
+        const cy = startBounds.y + startBounds.h / 2;
 
-      // compute scale factors relative to original bounds
-      const scaleX = (mx - startBounds.x) / startBounds.w;
-      const scaleY = (my - startBounds.y) / startBounds.h;
-      const cx = startBounds.x + startBounds.w/2;
-      const cy = startBounds.y + startBounds.h/2;
+                selectedIndices.forEach(i => {
+            const p = world.platforms[i];
+            const px = p.x + p.w / 2;
+            const py = p.y + p.h / 2;
+            const dx = px - cx;
+            const dy = py - cy;
 
-      selectedIndices.forEach(i => {
-        const p = world.platforms[i];
-        const px = p.x + p.w/2;
-        const py = p.y + p.h/2;
-        const dx = px - cx;
-        const dy = py - cy;
-        p.x = cx + dx * scaleX - (p.w * scaleX)/2;
-        p.y = cy + dy * scaleY - (p.h * scaleY)/2;
-        p.w = p.w * scaleX;
-        p.h = p.h * scaleY;
-      });
+            p.x = cx + dx * scaleX - (p.w * scaleX) / 2;
+            p.y = cy + dy * scaleY - (p.h * scaleY) / 2;
+            p.w = p.w * scaleX;
+            p.h = p.h * scaleY;
+        });
     }
-  });
+});
 
-  canvas.addEventListener('mouseup', () => {
+canvas.addEventListener('mouseup', () => {
+    if (selectingBox) {
+        selectingBox = false;
+        const x1 = Math.min(selectStartX, selectCurrentX);
+        const y1 = Math.min(selectStartY, selectCurrentY);
+        const x2 = Math.max(selectStartX, selectCurrentX);
+        const y2 = Math.max(selectStartY, selectCurrentY);
+
+        selectedIndices = world.platforms
+            .map((p, i) => {
+                const intersects = !(
+                    p.x + p.w < x1 ||
+                    p.x > x2 ||
+                    p.y + p.h < y1 ||
+                    p.y > y2
+                );
+                return intersects ? i : null;
+            })
+            .filter(i => i !== null);
+    }
+
+    draggingPlatform = false;
     scalingGroup = false;
-  });
-  // --- Camera scrolling ---
-  document.addEventListener('keydown', e => {
+});
+
+// --- Camera scrolling ---
+document.addEventListener('keydown', e => {
     const step = 50;
     if (e.key === 'ArrowLeft' || e.key === 'a') {
-      cameraX = Math.max(0, cameraX - step);
+        cameraX = Math.max(0, cameraX - step);
     }
     if (e.key === 'ArrowRight' || e.key === 'd') {
-      cameraX = Math.min(worldWidth - canvas.width, cameraX + step);
+        cameraX = Math.min(worldWidth - canvas.width, cameraX + step);
     }
     if (e.key === 'ArrowUp' || e.key === 'w') {
-      cameraY = Math.max(0, cameraY - step);
+        cameraY = Math.max(0, cameraY - step);
     }
     if (e.key === 'ArrowDown' || e.key === 's') {
-      cameraY = Math.min(worldHeight - canvas.height, cameraY + step);
+        cameraY = Math.min(worldHeight - canvas.height, cameraY + step);
     }
-  });
+});
 
-  // --- Auto-update loop ---
-  function gameLoop() {
+// --- Auto-update loop ---
+function gameLoop() {
     redraw();
     requestAnimationFrame(gameLoop);
-  }
+}
 
-  // --- Initialize ---
-  window.addEventListener('load', () => {
+// --- Initialize ---
+window.addEventListener('load', () => {
     resizeCanvas();
     gameLoop();
-  });
+});
 </script>
-</body>
-</html>
+</body>html>
