@@ -279,35 +279,12 @@
     }
   });
 
-    canvas.addEventListener('mousedown', e => {
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left + cameraX;
-      const my = e.clientY - rect.top + cameraY;
+  canvas.addEventListener('mousedown', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left + cameraX;
+    const my = e.clientY - rect.top + cameraY;
 
-      const found = world.platforms.findIndex(
-        p => mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h
-      );
-
-      if (found === -1) {
-        selectingBox = true;
-        selectStartX = mx; selectStartY = my;
-        selectCurrentX = mx; selectCurrentY = my;
-        selectedIndices = [];
-      } else {
-        if (!selectedIndices.includes(found)) {
-          selectedIndices = [found];
-        }
-        // prepare drag offsets for all selected
-        dragOffsets = {};
-        selectedIndices.forEach(i => {
-          const p = world.platforms[i];
-          dragOffsets[i] = { dx: mx - p.x, dy: my - p.y };
-        });
-        draggingPlatform = true;
-      }
-    });
-
-    canvas.addEventListener('mousedown', e => {
+    // --- group scaling check first ---
     if (selectedIndices.length > 1) {
       const bounds = getGroupBounds();
       const corners = [
@@ -316,17 +293,40 @@
         {x:bounds.x,y:bounds.y+bounds.h},
         {x:bounds.x+bounds.w,y:bounds.y+bounds.h}
       ];
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left + cameraX;
-      const my = e.clientY - rect.top + cameraY;
-      // check if clicked near a corner
       if (corners.some(c => Math.hypot(mx-c.x,my-c.y)<10)) {
         scalingGroup = true;
         startBounds = bounds;
         startMouse = {mx,my};
+        return; // stop here so we don’t trigger selection logic
       }
     }
+
+    // --- normal selection / dragging ---
+    const found = world.platforms.findIndex(
+      p => mx >= p.x && mx <= p.x + p.w && my >= p.y && my <= p.y + p.h
+    );
+
+  if (found === -1) {
+    // click empty space → start marquee
+    selectingBox = true;
+    selectStartX = mx; selectStartY = my;
+    selectCurrentX = mx; selectCurrentY = my;
+    selectedIndices = [];
+  } else {
+    // clicked a block
+    if (!selectedIndices.includes(found)) {
+      selectedIndices = [found];
+    }
+    // prepare drag offsets
+    dragOffsets = {};
+      selectedIndices.forEach(i => {
+        const p = world.platforms[i];
+        dragOffsets[i] = { dx: mx - p.x, dy: my - p.y };
+      });
+      draggingPlatform = true;
+    }
   });
+
 
   canvas.addEventListener('mousemove', e => {
     if (scalingGroup) {
