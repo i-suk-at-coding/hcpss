@@ -61,9 +61,6 @@
     <textarea id="jsonInput" placeholder="Paste JSON here"></textarea>
     <button id="loadTextBtn">Load from Text</button>
   </div>
-
-  <!-- Loading overlay -->
-  <div id="loading">Loading...</div>
 <script>
   document.getElementById('helpBtn').addEventListener('click', () => {
       alert("Controls:\n- Arrow keys/WASD: Move camera\n- Click+Drag: Move block\n- Drag box: Select multiple\n- Rotation handle above block: Rotate\n- Toolbar buttons: Add/Delete/Save/Copy/Load");
@@ -383,7 +380,6 @@
 
   // --- Initialize ---
   window.addEventListener('load', () => {
-    document.getElementById('loading').style.display = 'none';
     resizeCanvas();
     gameLoop();
   });
