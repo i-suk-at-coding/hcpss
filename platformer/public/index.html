@@ -56,168 +56,237 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const messages = document.getElementById('messages');
-    const chatForm = document.getElementById('chatForm');
-    const chatInput = document.getElementById('chatInput');
-    const playerList = document.getElementById('playerList');
-    const usernameLabel = document.getElementById('username');
-    const countLabel = document.getElementById('count');
+<script>
+  const socket = io();
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const messages = document.getElementById('messages');
+  const chatForm = document.getElementById('chatForm');
+  const chatInput = document.getElementById('chatInput');
+  const playerList = document.getElementById('playerList');
+  const usernameLabel = document.getElementById('username');
+  const countLabel = document.getElementById('count');
 
-    // Fit canvas to window
-    function resizeCanvas() {
-      canvas.width = window.innerWidth - document.getElementById('right').offsetWidth;
-      canvas.height = window.innerHeight - document.getElementById('hud').offsetHeight;
-    }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+  // Fit canvas to window
+  function resizeCanvas() {
+    canvas.width = window.innerWidth - document.getElementById('right').offsetWidth;
+    canvas.height = window.innerHeight - document.getElementById('hud').offsetHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
 
-    document.getElementById('editorBtn').addEventListener('click', () => {
-      window.location.href = '/map-editor.html';
-    });
+  document.getElementById('editorBtn').addEventListener('click', () => {
+    window.location.href = '/map-editor.html';
+  });
 
-    let myUsername = null;
-    let world = null;
-    let players = {};
-    const SIZE = { w: 40, h: 60 };
+  let myUsername = null;
+  let world = null;
+  let players = {};
+  const SIZE = { w: 40, h: 60 };
 
-    socket.on('auth', ({ username }) => {
-      myUsername = username;
-      usernameLabel.textContent = "You: " + username;
-    });
+  socket.on('auth', ({ username }) => {
+    myUsername = username;
+    usernameLabel.textContent = "You: " + username;
+  });
 
-    socket.on('world', (payload) => {
-      world = payload.world;
-      players = payload.players || {};
-      updatePlayerList();
-    });
+  socket.on('world', (payload) => {
+    world = payload.world;
+    players = payload.players || {};
+    updatePlayerList();
+  });
 
-    socket.on('player join', ({ username, state }) => {
-      players[username] = state;
-      updatePlayerList();
-    });
+  socket.on('player join', ({ username, state }) => {
+    players[username] = state;
+    updatePlayerList();
+  });
 
-    socket.on('player leave', ({ username }) => {
-      delete players[username];
-      updatePlayerList();
-    });
+  socket.on('player leave', ({ username }) => {
+    delete players[username];
+    updatePlayerList();
+  });
 
-    socket.on('state', (serverPlayers) => {
-      players = serverPlayers;
-      updatePlayerList();
-    });
+  socket.on('state', (serverPlayers) => {
+    players = serverPlayers;
+    updatePlayerList();
+  });
 
-    const input = { left: false, right: false, up: false };
-    const keymap = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', a:'left', d:'right', w:'up', ' ':'up' };
+  const input = { left: false, right: false, up: false };
+  const keymap = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', a:'left', d:'right', w:'up', ' ':'up' };
 
-    window.addEventListener('keydown', (e) => {
-      const k = keymap[e.key];
-      if (!k) return;
-      if (!input[k]) {
-        input[k] = true;
-        socket.emit('input', input);
-      }
-    });
-
-    window.addEventListener('keyup', (e) => {
-      const k = keymap[e.key];
-      if (!k) return;
-      input[k] = false;
+  window.addEventListener('keydown', (e) => {
+    const k = keymap[e.key];
+    if (!k) return;
+    if (!input[k]) {
+      input[k] = true;
       socket.emit('input', input);
-    });
+    }
+  });
 
-    chatForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const text = chatInput.value.trim();
-      if (!text) return;
-      socket.emit('chat message', text);
-      chatInput.value = '';
-    });
+  window.addEventListener('keyup', (e) => {
+    const k = keymap[e.key];
+    if (!k) return;
+    input[k] = false;
+    socket.emit('input', input);
+  });
 
-    socket.on('chat history', (history) => {
-      messages.innerHTML = '';
-      history.forEach(addMessage);
-    });
+  chatForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = chatInput.value.trim();
+    if (!text) return;
+    socket.emit('chat message', text);
+    chatInput.value = '';
+  });
 
-    socket.on('chat message', addMessage);
+  socket.on('chat history', (history) => {
+    messages.innerHTML = '';
+    history.forEach(addMessage);
+  });
 
-    function addMessage(msg) {
+  socket.on('chat message', addMessage);
+
+  function addMessage(msg) {
+    const li = document.createElement('li');
+    const time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = new Date(msg.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    li.textContent = `${msg.user}: ${msg.text}`;
+    li.appendChild(time);
+    if (msg.user === myUsername) li.classList.add('self');
+    messages.appendChild(li);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function updatePlayerList() {
+    playerList.innerHTML = '';
+    Object.keys(players).forEach(u => {
       const li = document.createElement('li');
-      const time = document.createElement('span');
-      time.className = 'time';
-      time.textContent = new Date(msg.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-      li.textContent = `${msg.user}: ${msg.text}`;
-      li.appendChild(time);
-      if (msg.user === myUsername) li.classList.add('self');
-      messages.appendChild(li);
-      messages.scrollTop = messages.scrollHeight;
+      const dot = document.createElement('div');
+      dot.className = 'dot';
+      dot.style.background = players[u].color || '#3b82f6';
+      li.appendChild(dot);
+      li.appendChild(document.createTextNode(u));
+      playerList.appendChild(li);
+    });
+    countLabel.textContent = "Players: " + Object.keys(players).length;
+  }
+
+  // --- Rotated hitbox helpers (same math as editor) ---
+  function getRotatedCorners(p) {
+    const cx = p.x + p.w / 2;
+    const cy = p.y + p.h / 2;
+    const rad = ((p.rotation || 0) * Math.PI) / 180;
+
+    const corners = [
+      { x: p.x,       y: p.y },
+      { x: p.x + p.w, y: p.y },
+      { x: p.x + p.w, y: p.y + p.h },
+      { x: p.x,       y: p.y + p.h }
+    ];
+
+    return corners.map(c => {
+      const dx = c.x - cx;
+      const dy = c.y - cy;
+      return {
+        x: cx + dx * Math.cos(rad) - dy * Math.sin(rad),
+        y: cy + dx * Math.sin(rad) + dy * Math.cos(rad)
+      };
+    });
+  }
+
+  function pointInPolygon(px, py, corners) {
+    let inside = false;
+    for (let i = 0, j = corners.length - 1; i < corners.length; j = i++) {
+      const xi = corners[i].x, yi = corners[i].y;
+      const xj = corners[j].x, yj = corners[j].y;
+      const intersect = ((yi > py) !== (yj > py)) &&
+                        (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
     }
+    return inside;
+  }
 
-    function updatePlayerList() {
-      playerList.innerHTML = '';
-      Object.keys(players).forEach(u => {
-        const li = document.createElement('li');
-        const dot = document.createElement('div');
-        dot.className = 'dot';
-        dot.style.background = players[u].color || '#3b82f6';
-        li.appendChild(dot);
-        li.appendChild(document.createTextNode(u));
-        playerList.appendChild(li);
-      });
-      countLabel.textContent = "Players: " + Object.keys(players).length;
-    }
+  // Optional: pick platforms with accurate rotation
+  let pickedIndex = null;
 
-    function drawPlatform(p) {
-      ctx.save();
-      ctx.translate(p.x + p.w/2, p.y + p.h/2);
-      ctx.rotate((p.rotation || 0) * Math.PI/180);
-      const colors = { normal:"#888", ice:"#3b82f6", lava:"#ef4444", bounce:"#facc15", sticky:"#10b981" };
-      ctx.fillStyle = colors[p.material] || "#888";
-      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-      ctx.restore();
-    }
+  canvas.addEventListener('click', (e) => {
+    if (!world) return;
+    const rect = canvas.getBoundingClientRect();
+    const me = players[myUsername] || { x: 0, y: 0 };
+    const camX = Math.max(0, Math.min(me.x - canvas.width/2, world.width - canvas.width));
+    const camY = Math.max(0, Math.min(me.y - canvas.height/2, world.height - canvas.height));
 
-    function render() {
-      if (!world) return requestAnimationFrame(render);
-      const me = players[myUsername];
-      const camX = Math.max(0, Math.min((me ? me.x : 0) - canvas.width/2, world.width - canvas.width));
-      const camY = Math.max(0, Math.min((me ? me.y : 0) - canvas.height/2, world.height - canvas.height));
+    const mx = e.clientX - rect.left + camX;
+    const my = e.clientY - rect.top + camY;
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.save();
-      ctx.translate(-camX, -camY);
-
-      // Background
-      ctx.fillStyle = '#222';
-      ctx.fillRect(0, 0, world.width, world.height);
-
-      // Platforms
-      for (const plat of world.platforms) drawPlatform(plat);
-
-      // Players
-      for (const [u, p] of Object.entries(players)) {
-        ctx.fillStyle = p.color || '#a3e635';
-        ctx.fillRect(p.x, p.y, SIZE.w, SIZE.h);
-
-        // Eyes
-        ctx.fillStyle = '#000';
-        const eyeX = p.dir === 1 ? p.x + SIZE.w - 12 : p.x + 4;
-        ctx.fillRect(eyeX, p.y + 16, 8, 8);
-
-        // Name tag
-        ctx.fillStyle = '#e5e7eb';
-        ctx.font = '12px Segoe UI';
-        ctx.fillText(u, p.x, p.y - 6);
+    // Find topmost platform under the click using rotated polygon
+    pickedIndex = null;
+    for (let i = world.platforms.length - 1; i >= 0; i--) {
+      const p = world.platforms[i];
+      const corners = getRotatedCorners(p);
+      if (pointInPolygon(mx, my, corners)) {
+        pickedIndex = i;
+        break;
       }
+    }
+  });
 
-      ctx.restore();
-      requestAnimationFrame(render);
+  function drawPlatform(p, isPicked) {
+    ctx.save();
+    ctx.translate(p.x + p.w/2, p.y + p.h/2);
+    ctx.rotate((p.rotation || 0) * Math.PI/180);
+    const colors = { normal:"#888", ice:"#3b82f6", lava:"#ef4444", bounce:"#facc15", sticky:"#10b981" };
+    ctx.fillStyle = colors[p.material] || "#888";
+    ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+
+    // Optional: draw a highlight if picked (uses rotated edges)
+    if (isPicked) {
+      ctx.strokeStyle = '#0ff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-p.w/2, -p.h/2, p.w, p.h);
+    }
+    ctx.restore();
+  }
+
+  function render() {
+    if (!world) return requestAnimationFrame(render);
+    const me = players[myUsername];
+    const camX = Math.max(0, Math.min((me ? me.x : 0) - canvas.width/2, world.width - canvas.width));
+    const camY = Math.max(0, Math.min((me ? me.y : 0) - canvas.height/2, world.height - canvas.height));
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(-camX, -camY);
+
+    // Background
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, world.width, world.height);
+
+    // Platforms (draw highlight if picked)
+    for (let i = 0; i < world.platforms.length; i++) {
+      drawPlatform(world.platforms[i], i === pickedIndex);
     }
 
+    // Players
+    for (const [u, p] of Object.entries(players)) {
+      ctx.fillStyle = p.color || '#a3e635';
+      ctx.fillRect(p.x, p.y, SIZE.w, SIZE.h);
+
+      // Eyes
+      ctx.fillStyle = '#000';
+      const eyeX = p.dir === 1 ? p.x + SIZE.w - 12 : p.x + 4;
+      ctx.fillRect(eyeX, p.y + 16, 8, 8);
+
+      // Name tag
+      ctx.fillStyle = '#e5e7eb';
+      ctx.font = '12px Segoe UI';
+      ctx.fillText(u, p.x, p.y - 6);
+    }
+
+    ctx.restore();
     requestAnimationFrame(render);
-  </script>
+  }
+
+  requestAnimationFrame(render);
+</script>
 </body>
 </html>
