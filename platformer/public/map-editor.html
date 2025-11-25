@@ -257,17 +257,57 @@
     reader.readAsText(file);
   });
 
-  // Load JSON from text area
-  loadTextBtn.addEventListener('click', () => {
-    try {
-      const data = "[" + jsonInput.value.split("\n").filter(l => l.trim()).join(",") + "]";
-      world.platforms = JSON.parse(data);
-      selectedIndices = [];
-      redraw();
-    } catch (err) {
-      alert("Invalid JSON text");
+  // Load JSON from text area (robust: handles array or one-per-line)
+loadTextBtn.addEventListener('click', () => {
+  try {
+    const raw = jsonInput.value.trim();
+
+    // 1) Determine input format
+    let parsed;
+    if (raw.startsWith('[') && raw.endsWith(']')) {
+      // Full JSON array
+      parsed = JSON.parse(raw);
+    } else {
+      // One object per line (no brackets)
+      const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+      const jsonArray = `[${lines.join(',')}]`;
+      parsed = JSON.parse(jsonArray);
     }
-  });
+
+    // 2) Validate it’s an array of objects
+    if (!Array.isArray(parsed)) {
+      throw new Error('Expected an array of platform objects.');
+    }
+
+    // 3) Normalize: keep only expected fields
+    const normalized = parsed.map((p, idx) => {
+      if (typeof p !== 'object' || p === null) {
+        throw new Error(`Item ${idx} is not an object.`);
+      }
+      // Required fields
+      const hasFields = ['x','y','w','h','rotation','material'].every(k => k in p);
+      if (!hasFields) {
+        throw new Error(`Item ${idx} is missing required fields (x,y,w,h,rotation,material).`);
+      }
+      return {
+        x: Number(p.x),
+        y: Number(p.y),
+        w: Number(p.w),
+        h: Number(p.h),
+        rotation: Number(p.rotation),
+        material: String(p.material)
+      };
+    });
+
+    // 4) Apply and redraw
+    world.platforms = normalized;
+    selectedIndices = [];
+    redraw();
+  } catch (err) {
+    alert(`Invalid JSON text: ${err.message}`);
+  }
+});
+
 
   // Mouse events
   let selectingBox = false;
