@@ -252,21 +252,54 @@
     }
   });
 
- canvas.addEventListener('mousemove', e => {
+// --- Bezier Curve Button ---
+const curveBtn = document.createElement('button');
+curveBtn.textContent = "Add Curve";
+document.getElementById('toolbar').appendChild(curveBtn);
+
+let addingCurve = false;
+let curvePoints = [];
+
+curveBtn.addEventListener('click', () => {
+  addingCurve = true;
+  curvePoints = [];
+});
+
+// --- Bezier Helper ---
+function bezierToPolygon(p0, p1, p2, steps=20) {
+  const pts = [];
+  for (let t = 0; t <= 1; t += 1/steps) {
+    const x = (1-t)*(1-t)*p0.x + 2*(1-t)*t*p1.x + t*t*p2.x;
+    const y = (1-t)*(1-t)*p0.y + 2*(1-t)*t*p1.y + t*t*p2.y;
+    pts.push({x,y});
+  }
+  return pts;
+}
+
+// --- Mouse events ---
+canvas.addEventListener('mousedown', e => {
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left + cameraX;
   const my = e.clientY - rect.top + cameraY;
 
-  // Curve point dragging
-  if (draggingPlatform && selectedIndices.length === 1) {
-    const p = world.platforms[selectedIndices[0]];
-    if (p.type === "curve" && activeHandle !== null) {
-      const dx = mx - startMouse.mx;
-      const dy = my - startMouse.my;
-      p.points[activeHandle].x = startPlatform.points[activeHandle].x + dx;
-      p.points[activeHandle].y = startPlatform.points[activeHandle].y + dy;
-      return;
+  // Curve creation
+  if (addingCurve) {
+    curvePoints.push({x:mx, y:my});
+
+    if (curvePoints.length === 3) {
+      const [p0, p1, p2] = curvePoints;
+      const curve = bezierToPolygon(p0, p1, p2, 20); // 20 segments
+      world.platforms.push({
+        type: "curve",
+        material: materialSelect.value,
+        points: curve
+      });
+      selectedIndices = [world.platforms.length-1];
+      addingCurve = false;
+      curvePoints = [];
+      redraw();
     }
+    return;
   }
 
   // Rectangle dragging
