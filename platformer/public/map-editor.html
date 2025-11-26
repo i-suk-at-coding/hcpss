@@ -270,7 +270,7 @@
     const step=50;
     if(e.key==='ArrowLeft'||e.key==='a') cameraX=Math.max(0,cameraX-step);
     if(e.key==='ArrowRight'||e.key==='d') cameraX=Math.min(worldWidth-canvas.width,cameraX+step);
-        if(e.key==='ArrowUp'||e.key==='w') cameraY=Math.max(0,cameraY-step);
+    if(e.key==='ArrowUp'||e.key==='w') cameraY=Math.max(0,cameraY-step);
     if(e.key==='ArrowDown'||e.key==='s') cameraY=Math.min(worldHeight-canvas.height,cameraY+step);
   });
 
