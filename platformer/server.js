@@ -100,34 +100,72 @@ function respawnPlayer(p) {
 }
 
 
-// SAT helpers
+// --- SAT helpers ---
 function dot(a,b){return a.x*b.x+a.y*b.y;}
 function sub(a,b){return {x:a.x-b.x,y:a.y-b.y};}
 function normalize(v){const l=Math.hypot(v.x,v.y);return l?{x:v.x/l,y:v.y/l}:{x:0,y:0};}
 function getAABBCorners(x,y,w,h){return [{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}];}
+function project(corners,axis){
+  let min=Infinity,max=-Infinity;
+  for(const c of corners){
+    const s=dot(c,axis);
+    if(s<min)min=s;
+    if(s>max)max=s;
+  }
+  return {min,max};
+}
+function overlapAmount(a,b){return Math.min(a.max,b.max)-Math.max(a.min,b.min);}
+
+// Get corners for rotated rect
 function getRotRectCorners(p){
   const cx=p.x+p.w/2, cy=p.y+p.h/2, rad=(p.rotation||0)*Math.PI/180;
   const local=[{x:-p.w/2,y:-p.h/2},{x:p.w/2,y:-p.h/2},{x:p.w/2,y:p.h/2},{x:-p.w/2,y:p.h/2}];
-  return local.map(v=>({x:cx+v.x*Math.cos(rad)-v.y*Math.sin(rad),y:cy+v.x*Math.sin(rad)+v.y*Math.cos(rad)}));
+  return local.map(v=>({
+    x:cx+v.x*Math.cos(rad)-v.y*Math.sin(rad),
+    y:cy+v.x*Math.sin(rad)+v.y*Math.cos(rad)
+  }));
 }
-function project(corners,axis){let min=Infinity,max=-Infinity;for(const c of corners){const s=dot(c,axis);if(s<min)min=s;if(s>max)max=s;}return {min,max};}
-function overlapAmount(a,b){return Math.min(a.max,b.max)-Math.max(a.min,b.min);}
-function satAabbVsRotRect(player,plat,w,h){
-  const a=getAABBCorners(player.x,player.y,w,h);
-  const b=getRotRectCorners(plat);
-  const edge0=sub(b[1],b[0]), edge1=sub(b[3],b[0]);
-  const axes=[{x:1,y:0},{x:0,y:1},normalize({x:-edge0.y,y:edge0.x}),normalize({x:-edge1.y,y:edge1.x})];
-  let minOverlap=Infinity, smallestAxis=null;
-  for(const axis of axes){
-    const pa=project(a,axis), pb=project(b,axis);
-    const overlap=overlapAmount(pa,pb);
-    if(overlap<=0) return null;
-    if(overlap<minOverlap){minOverlap=overlap;smallestAxis=axis;}
+
+// Generalized SAT: player AABB vs any convex polygon
+function satAabbVsPolygon(player, polygonPoints, w, h) {
+  const a = getAABBCorners(player.x, player.y, w, h);
+
+  // axes: AABB + polygon edges
+  const axes = [{x:1,y:0},{x:0,y:1}];
+  for (let i=0; i<polygonPoints.length; i++) {
+    const p1 = polygonPoints[i];
+    const p2 = polygonPoints[(i+1)%polygonPoints.length];
+    const edge = sub(p2,p1);
+    const axis = normalize({x:-edge.y,y:edge.x});
+    axes.push(axis);
   }
-  const centerDelta={x:(player.x+w/2)-(plat.x+plat.w/2),y:(player.y+h/2)-(plat.y+plat.h/2)};
-  if(dot(centerDelta,smallestAxis)<0) smallestAxis={x:-smallestAxis.x,y:-smallestAxis.y};
-  return {axis:smallestAxis,depth:minOverlap,rotation:plat.rotation||0};
+
+  let minOverlap = Infinity;
+  let smallestAxis = null;
+
+  for (const axis of axes) {
+    const pa = project(a, axis);
+    const pb = project(polygonPoints, axis);
+    const overlap = overlapAmount(pa,pb);
+    if (overlap <= 0) return null;
+    if (overlap < minOverlap) {
+      minOverlap = overlap;
+      smallestAxis = axis;
+    }
+  }
+
+  // direction correction
+  const polyCenter = polygonPoints.reduce((acc,p)=>({x:acc.x+p.x,y:acc.y+p.y}),{x:0,y:0});
+  polyCenter.x /= polygonPoints.length;
+  polyCenter.y /= polygonPoints.length;
+  const centerDelta = {x:(player.x+w/2)-polyCenter.x, y:(player.y+h/2)-polyCenter.y};
+  if (dot(centerDelta, smallestAxis) < 0) {
+    smallestAxis = {x:-smallestAxis.x, y:-smallestAxis.y};
+  }
+
+  return {axis: smallestAxis, depth: minOverlap};
 }
+
 
 // Physics step
 function stepPlayer(p, dt) {
