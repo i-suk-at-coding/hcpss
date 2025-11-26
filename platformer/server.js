@@ -16,12 +16,8 @@ const WORLD = {
   width: 5000,
   height: 2000,
   platforms: [
-    {"x":21,"y":700.9411764705883,"w":248.32535885167465,"h":27.058823529411768,"rotation":0,"material":"normal"},
-    {"x":195,"y":672,"w":200,"h":20,"rotation":0,"material":"normal"},
-    {"x":24,"y":673,"w":200,"h":20,"rotation":0,"material":"bounce"},
-    {"x":223,"y":648,"w":972.670807453416,"h":74,"rotation":0,"material":"ice"},
-    {"x":816.329192546584,"y":648,"w":972.670807453416,"h":74,"rotation":0,"material":"ice"},
-    {"x":1789,"y":648,"w":200,"h":20,"rotation":0,"material":"lava"}
+    {"x":56,"y":616,"w":798,"h":54,"rotation":-152.02052561151987,"material":"bounce","rotationHandle":{"x":455,"y":576}},
+    {"x":772,"y":803,"w":1194,"h":50,"rotation":0,"material":"ice","rotationHandle":{"x":1369,"y":763}}
   ]
 };
 
