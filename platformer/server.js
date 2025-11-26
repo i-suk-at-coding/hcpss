@@ -15,7 +15,7 @@ const GRAVITY = 1600;
 const WORLD = {
   width: 5000,
   height: 2000,
-  spawn: { x: 200, y: 1000},   // ✅ NEW: default spawn point
+  spawn: { x: 200, y: 100},   // ✅ NEW: default spawn point
   platforms: [
     {"x":56,"y":616,"w":798,"h":54,"rotation":-152.02052561151987,"material":"bounce"},
     {"x":772,"y":803,"w":1194,"h":50,"rotation":0,"material":"ice"}
