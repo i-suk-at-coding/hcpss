@@ -109,12 +109,15 @@ const WORLD = {
   height: 2000,
   platforms: [
     {
-      type: "curve",
-      material: "ice",
-      points: circleToPolygon(400, 300, 80, 24) // a smooth ice circle
-    }
-  ],
-  spawn: { x: 100, y: 100 }
+    type: "curve",
+    material: "ice",
+    points: bezierToPolygon(
+      {x: 200, y: 400},   // start point
+      {x: 300, y: 300},   // control point (defines the curve)
+      {x: 400, y: 400},   // end point
+      20                  // number of segments
+    )
+  }
 };
 
 let players = {};
