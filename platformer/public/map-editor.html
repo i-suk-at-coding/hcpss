@@ -252,36 +252,42 @@
     }
   });
 
-  canvas.addEventListener('mousemove', e => {
-    const rect=canvas.getBoundingClientRect();
-    const mx=e.clientX-rect.left+cameraX;
-    const my=e.clientY-rect.top+cameraY;
+ canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left + cameraX;
+  const my = e.clientY - rect.top + cameraY;
 
-    if(draggingPlatform && selectedIndices.length===1){
-      const p=world.platforms[selectedIndices[0]];
-      if(p.type==="curve" && activeHandle!==null){
-        const dx=mx-startMouse.mx;
-        const dy=my-startMouse.my;
-        p.points[activeHandle].x=startPlatform.points[activeHandle].x+dx;
-        p.points[activeHandle].y=startPlatform.points[activeHandle].y+dy;
-        return;
-      }
-      if (draggingPlatform) {
-  selectedIndices.forEach(i => {
-    const plat = world.platforms[i];
-    plat.x = mx - dragOffsets[i].dx;
-    plat.y = my - dragOffsets[i].dy;
-  });
-    }
-
-    if(rotatingPlatform && selectedIndices.length===1){
-      const p=world.platforms[selectedIndices[0]];
-      const cx=p.x+p.w/2, cy=p.y+p.h/2;
-      const angle=Math.atan2(my-cy,mx-cx)*180/Math.PI;
-      p.rotation=angle;
+  // Curve point dragging
+  if (draggingPlatform && selectedIndices.length === 1) {
+    const p = world.platforms[selectedIndices[0]];
+    if (p.type === "curve" && activeHandle !== null) {
+      const dx = mx - startMouse.mx;
+      const dy = my - startMouse.my;
+      p.points[activeHandle].x = startPlatform.points[activeHandle].x + dx;
+      p.points[activeHandle].y = startPlatform.points[activeHandle].y + dy;
       return;
     }
+  }
 
+  // Rectangle dragging
+  if (draggingPlatform) {
+    selectedIndices.forEach(i => {
+      const plat = world.platforms[i];
+      plat.x = mx - dragOffsets[i].dx;
+      plat.y = my - dragOffsets[i].dy;
+    });
+  }
+
+  // Rotation
+  if (rotatingPlatform && selectedIndices.length === 1) {
+    const p = world.platforms[selectedIndices[0]];
+    const cx = p.x + p.w/2, cy = p.y + p.h/2;
+    const angle = Math.atan2(my - cy, mx - cx) * 180 / Math.PI;
+    p.rotation = angle;
+    return;
+  }
+
+  // Scaling
   if (scalingPlatform && selectedIndices.length === 1) {
     const p = world.platforms[selectedIndices[0]];
     const dx = mx - startMouse.mx, dy = my - startMouse.my;
