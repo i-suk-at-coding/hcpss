@@ -239,7 +239,13 @@
   }
   function getRotRectCorners(p){
     const cx=p.x+p.w/2, cy=p.y+p.h/2, rad=(p.rotation||0)*Math.PI/180;
-    const local=[{-p.w/2,-p.h/2},{p.w/2,-p.h/2},{p.w/2,p.h/2},{-p.w/2,p.h/2}];
+    const local = [
+      { x: -p.w/2, y: -p.h/2 },
+      { x:  p.w/2, y: -p.h/2 },
+      { x:  p.w/2, y:  p.h/2 },
+      { x: -p.w/2, y:  p.h/2 }
+    ];
+
     return local.map(v=>({x:cx+v[0]*Math.cos(rad)-v[1]*Math.sin(rad),
                           y:cy+v[0]*Math.sin(rad)+v[1]*Math.cos(rad)}));
   }
