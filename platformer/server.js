@@ -17,18 +17,9 @@ const WORLD = {
   height: 2000,
   platforms: [
     {
-    "type": "curve",
-    "material": "ice",
-    "points": [
-      {"x":100,"y":300},
-      {"x":130,"y":280},
-      {"x":160,"y":270},
-      {"x":190,"y":275},
-      {"x":220,"y":290},
-      {"x":250,"y":310},
-      {"x":280,"y":340},
-      {"x":310,"y":370}
-    ]
+  "type": "curve",
+  "material": "ice",
+  "points": circleToPolygon(400, 300, 80, 24) // a smooth ice circle
   }
   ],
   spawn: {"x":100,"y":100}
@@ -176,7 +167,31 @@ function satAabbVsPolygon(player, polygonPoints, w, h) {
 }
 
 
-// Physics step
+// --- Curve helpers ---
+// Approximate a circle into polygon points
+function circleToPolygon(cx, cy, radius, segments=16) {
+  const pts = [];
+  for (let i = 0; i < segments; i++) {
+    const angle = (i / segments) * 2 * Math.PI;
+    pts.push({
+      x: cx + radius * Math.cos(angle),
+      y: cy + radius * Math.sin(angle)
+    });
+  }
+  return pts;
+}
+
+// Approximate a quadratic Bezier curve into polygon points
+function bezierToPolygon(p0, p1, p2, steps=20) {
+  const pts = [];
+  for (let t = 0; t <= 1; t += 1/steps) {
+    const x = (1-t)*(1-t)*p0.x + 2*(1-t)*t*p1.x + t*t*p2.x;
+    const y = (1-t)*(1-t)*p0.y + 2*(1-t)*t*p1.y + t*t*p2.y;
+    pts.push({x,y});
+  }
+  return pts;
+}
+
 // Physics step
 function stepPlayer(p, dt) {
   const ACCEL=1500, FRICTION=1200, MAX_SPEED=300, JUMP_VELOCITY=-600, COYOTE_TIME=0.1, JUMP_BUFFER=0.15;
