@@ -73,19 +73,6 @@
   spawnBtn.textContent = "Set Spawn";
   document.getElementById('toolbar').appendChild(spawnBtn);
 
-  // --- Add Curve Button ---
-  const curveBtn = document.createElement('button');
-  curveBtn.textContent = "Add Curve";
-  document.getElementById('toolbar').appendChild(curveBtn);
-
-  let addingCurve = false;
-  let curvePoints = [];
-
-  curveBtn.addEventListener('click', () => {
-    addingCurve = true;
-    curvePoints = [];
-  });
-
   // --- World State ---
   const worldWidth = 4000, worldHeight = 2000;
   let cameraX = 0, cameraY = 0;
