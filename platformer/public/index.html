@@ -57,106 +57,62 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-  // --- Socket & Canvas Setup ---
+  // =========================
+  // NON-COLLISION SECTION (TOP)
+  // =========================
+
   const socket = io();
   const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d', { alpha: false });
+  const ctx = canvas.getContext('2d');
 
-  // --- UI Elements ---
   const messages = document.getElementById('messages');
   const chatForm = document.getElementById('chatForm');
   const chatInput = document.getElementById('chatInput');
   const playerList = document.getElementById('playerList');
   const usernameLabel = document.getElementById('username');
   const countLabel = document.getElementById('count');
-  const rightPane = document.getElementById('right');
-  const hud = document.getElementById('hud');
-  const editorBtn = document.getElementById('editorBtn');
 
-  // --- Constants ---
-  const SIZE = { w: 40, h: 60 };
-  const materialColors = {
-    normal: "#888",
-    ice: "#3b82f6",
-    lava: "#ef4444",
-    bounce: "#facc15",
-    sticky: "#10b981"
-  };
-
-  // --- Safe DOM checks ---
-  function assertEl(el, id) {
-    if (!el) throw new Error(`Missing element: ${id}`);
-    return el;
-  }
-  assertEl(canvas, 'canvas');
-  assertEl(messages, 'messages');
-  assertEl(chatForm, 'chatForm');
-  assertEl(chatInput, 'chatInput');
-  assertEl(playerList, 'playerList');
-  assertEl(usernameLabel, 'username');
-  assertEl(countLabel, 'count');
-  assertEl(rightPane, 'right');
-  assertEl(hud, 'hud');
-  assertEl(editorBtn, 'editorBtn');
-
-  // --- Canvas Resize with DPR ---
   function resizeCanvas() {
-    const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
-    const w = Math.max(0, window.innerWidth - rightPane.offsetWidth);
-    const h = Math.max(0, window.innerHeight - hud.offsetHeight);
-    canvas.style.width = `${w}px`;
-    canvas.style.height = `${h}px`;
-    canvas.width = Math.floor(w * dpr);
-    canvas.height = Math.floor(h * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const right = document.getElementById('right');
+    const hud = document.getElementById('hud');
+    canvas.width = window.innerWidth - (right ? right.offsetWidth : 0);
+    canvas.height = window.innerHeight - (hud ? hud.offsetHeight : 0);
   }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
 
-  let resizeRAF = null;
-  function queueResize() {
-    if (resizeRAF) return;
-    resizeRAF = requestAnimationFrame(() => {
-      resizeRAF = null;
-      resizeCanvas();
+  const editorBtn = document.getElementById('editorBtn');
+  if (editorBtn) {
+    editorBtn.addEventListener('click', () => {
+      window.location.href = '/map-editor.html';
     });
   }
-  queueResize();
-  window.addEventListener('resize', queueResize);
 
-  // --- Navigation ---
-  editorBtn.addEventListener('click', () => {
-    window.location.href = '/map-editor.html';
-  });
-
-  // --- Game State ---
   let myUsername = null;
   let world = null;
-  let players = Object.create(null);
+  let players = {};
+  const SIZE = { w: 40, h: 60 };
 
   // --- Socket Events ---
-  socket.on('connect_error', () => {
-    // optionally show a message in UI if needed
-  });
-
   socket.on('auth', ({ username }) => {
     myUsername = username;
-    usernameLabel.textContent = `You: ${username}`;
+    if (usernameLabel) usernameLabel.textContent = `You: ${username}`;
   });
 
   socket.on('world', ({ world: w, players: p }) => {
-    world = w || null;
-    players = p ? { ...p } : Object.create(null);
+    world = w;
+    players = (p && typeof p === 'object') ? p : {};
     updatePlayerList();
   });
 
   socket.on('player join', ({ username, state }) => {
-    if (!username) return;
+    if (!players || typeof players !== 'object') players = {};
     players[username] = state || {};
     updatePlayerList();
   });
 
   socket.on('player leave', ({ username }) => {
-    if (!username) return;
-    delete players[username];
+    if (players && players[username]) delete players[username];
     updatePlayerList();
   });
 
@@ -167,12 +123,6 @@
     }
   });
 
-  // --- Prevent page scroll on game keys ---
-  window.addEventListener('keydown', (e) => {
-    const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', ' '];
-    if (keys.includes(e.key)) e.preventDefault();
-  }, { passive: false });
-
   // --- Input Handling ---
   const input = { left: false, right: false, up: false };
   const keymap = {
@@ -180,26 +130,22 @@
     a: 'left', d: 'right', w: 'up', ' ': 'up'
   };
 
-  function emitInput() {
-    socket.emit('input', input);
-  }
-
   window.addEventListener('keydown', (e) => {
     const k = keymap[e.key];
     if (!k || input[k]) return;
     input[k] = true;
-    emitInput();
+    socket.emit('input', input);
   });
 
   window.addEventListener('keyup', (e) => {
     const k = keymap[e.key];
     if (!k) return;
     input[k] = false;
-    emitInput();
+    socket.emit('input', input);
   });
 
   // --- Chat ---
-  chatForm.addEventListener('submit', (e) => {
+  chatForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = chatInput.value.trim();
     if (!text) return;
@@ -208,119 +154,45 @@
   });
 
   socket.on('chat history', (history) => {
+    if (!messages) return;
     messages.innerHTML = '';
-    if (Array.isArray(history)) history.forEach(addMessage);
+    (history || []).forEach(addMessage);
   });
 
   socket.on('chat message', addMessage);
 
   function addMessage(msg) {
-    if (!msg) return;
+    if (!messages || !msg) return;
     const li = document.createElement('li');
     const time = document.createElement('span');
     time.className = 'time';
-    const ts = msg.time ? new Date(msg.time) : new Date();
-    time.textContent = ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    li.textContent = `${msg.user || 'Unknown'}: ${msg.text || ''}`;
+    time.textContent = new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    li.textContent = `${msg.user}: ${msg.text}`;
     li.appendChild(time);
-    if (msg.user && msg.user === myUsername) li.classList.add('self');
+    if (msg.user === myUsername) li.classList.add('self');
     messages.appendChild(li);
     messages.scrollTop = messages.scrollHeight;
   }
 
   // --- Player List ---
   function updatePlayerList() {
+    if (!playerList || !players) return;
     playerList.innerHTML = '';
-    const names = Object.keys(players);
-    for (const u of names) {
+    Object.keys(players).forEach(u => {
       const li = document.createElement('li');
       const dot = document.createElement('div');
       dot.className = 'dot';
-      dot.style.background = (players[u] && players[u].color) || '#3b82f6';
+      dot.style.background = players[u].color || '#3b82f6';
       li.appendChild(dot);
       li.appendChild(document.createTextNode(u));
       playerList.appendChild(li);
-    }
-    countLabel.textContent = `Players: ${names.length}`;
-  }
-
-  // --- Collision Helpers (world coords) ---
-  function getRotRectCorners(p) {
-    const cx = p.x + p.w / 2;
-    const cy = p.y + p.h / 2;
-    const rad = ((p.rotation || 0) * Math.PI) / 180;
-    const local = [
-      { x: -p.w/2, y: -p.h/2 },
-      { x:  p.w/2, y: -p.h/2 },
-      { x:  p.w/2, y:  p.h/2 },
-      { x: -p.w/2, y:  p.h/2 }
-    ];
-    return local.map(v => ({
-      x: cx + v.x * Math.cos(rad) - v.y * Math.sin(rad),
-      y: cy + v.x * Math.sin(rad) + v.y * Math.cos(rad)
-    }));
-  }
-
-  function getAABBCorners(ax, ay, aw, ah) {
-    return [
-      { x: ax,     y: ay     },
-      { x: ax+aw,  y: ay     },
-      { x: ax+aw,  y: ay+ah  },
-      { x: ax,     y: ay+ah  }
-    ];
-  }
-
-  function pointInPolygon(px, py, corners) {
-    let inside = false;
-    for (let i = 0, j = corners.length - 1; i < corners.length; j = i++) {
-      const xi = corners[i].x, yi = corners[i].y;
-      const xj = corners[j].x, yj = corners[j].y;
-      const intersect = ((yi > py) !== (yj > py)) &&
-                        (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
-      if (intersect) inside = !inside;
-    }
-    return inside;
-  }
-
-  function project(corners, axis) {
-    let min = Infinity, max = -Infinity;
-    for (const c of corners) {
-      const s = (c.x * axis.x + c.y * axis.y);
-      if (s < min) min = s;
-      if (s > max) max = s;
-    }
-    return { min, max };
-  }
-
-  function normalize(v) {
-    const len = Math.hypot(v.x, v.y);
-    return len ? { x: v.x / len, y: v.y / len } : { x: 0, y: 0 };
-  }
-
-  // AABB vs rotated rect (SAT + corner overlap fallback)
-  function aabbVsRotRect(ax, ay, aw, ah, plat) {
-    const rc = getRotRectCorners(plat);
-    const pc = getAABBCorners(ax, ay, aw, ah);
-
-    // Quick corner-overlap fallback (robust for “touching”)
-    for (const c of pc) if (pointInPolygon(c.x, c.y, rc)) return true;
-    for (const c of rc) if (c.x >= ax && c.x <= ax + aw && c.y >= ay && c.y <= ay + ah) return true;
-
-    // SAT axes: two unique edges of rotated rect + x/y
-    const axes = [
-      normalize({ x: rc[1].x - rc[0].x, y: rc[1].y - rc[0].y }),
-      normalize({ x: rc[3].x - rc[0].x, y: rc[3].y - rc[0].y }),
-      { x: 1, y: 0 }, { x: 0, y: 1 }
-    ];
-    for (const axis of axes) {
-      const pProj = project(pc, axis);
-      const rProj = project(rc, axis);
-      if (pProj.max < rProj.min || rProj.max < pProj.min) return false;
-    }
-    return true;
+    });
+    if (countLabel) countLabel.textContent = `Players: ${Object.keys(players).length}`;
   }
 
   // --- Drawing ---
+  const materialColors = { normal:"#888", ice:"#3b82f6", lava:"#ef4444", bounce:"#facc15", sticky:"#10b981" };
+
   function drawPlatform(plat) {
     ctx.save();
     ctx.translate(plat.x + plat.w/2, plat.y + plat.h/2);
@@ -331,98 +203,145 @@
   }
 
   function drawPlayer(u, p) {
+    const rot = Number.isFinite(p.currentRotation) ? p.currentRotation : 0;
+    const dir = (p.dir === 1 || p.dir === -1) ? p.dir : 1;
+
     ctx.save();
     ctx.translate(p.x + SIZE.w/2, p.y + SIZE.h/2);
-    ctx.rotate((p.currentRotation || 0) * Math.PI / 180);
+    ctx.rotate(rot * Math.PI / 180);
 
-    // Body
     ctx.fillStyle = p.color || '#a3e635';
     ctx.fillRect(-SIZE.w/2, -SIZE.h/2, SIZE.w, SIZE.h);
 
-    // Eye (relative to rotated body)
     ctx.fillStyle = '#000';
-    const eyeOffsetX = p.dir === 1 ? SIZE.w/2 - 12 : -SIZE.w/2 + 4;
+    const eyeOffsetX = dir === 1 ? SIZE.w/2 - 12 : -SIZE.w/2 + 4;
     ctx.fillRect(eyeOffsetX, -SIZE.h/2 + 16, 8, 8);
 
-    // Username
     ctx.fillStyle = '#e5e7eb';
     ctx.font = '12px Segoe UI';
-    ctx.textBaseline = 'bottom';
     ctx.fillText(u, -SIZE.w/2, -SIZE.h/2 - 6);
 
     ctx.restore();
   }
 
-  // --- Camera helpers ---
-  function clamp(val, min, max) {
-    return Math.max(min, Math.min(val, max));
+  // =========================
+  // COLLISION + PHYSICS SECTION (BOTTOM)
+  // =========================
+
+  // --- Math helpers ---
+  function dot(a,b){return a.x*b.x+a.y*b.y;}
+  function sub(a,b){return {x:a.x-b.x,y:a.y-b.y};}
+  function normalize(v){const l=Math.hypot(v.x,v.y);return l?{x:v.x/l,y:v.y/l}:{x:0,y:0};}
+
+  // --- Geometry ---
+  function getAABBCorners(x,y,w,h){
+    return [{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}];
+  }
+  function getRotRectCorners(p){
+    const cx=p.x+p.w/2, cy=p.y+p.h/2, rad=(p.rotation||0)*Math.PI/180;
+    const local=[{-p.w/2,-p.h/2},{p.w/2,-p.h/2},{p.w/2,p.h/2},{-p.w/2,p.h/2}];
+    return local.map(v=>({x:cx+v[0]*Math.cos(rad)-v[1]*Math.sin(rad),
+                          y:cy+v[0]*Math.sin(rad)+v[1]*Math.cos(rad)}));
+  }
+  function project(corners,axis){
+    let min=Infinity,max=-Infinity;
+    for(const c of corners){const s=dot(c,axis);if(s<min)min=s;if(s>max)max=s;}
+    return {min,max};
+  }
+  function overlapAmount(a,b){return Math.min(a.max,b.max)-Math.max(a.min,b.min);}
+
+  // --- SAT for AABB vs rotated rect (edge normals) ---
+  function satAabbVsRotRect(player,plat){
+    const a=getAABBCorners(player.x,player.y,SIZE.w,SIZE.h);
+    const b=getRotRectCorners(plat);
+
+    const edge0=sub(b[1],b[0]); // top edge direction
+    const edge1=sub(b[3],b[0]); // left edge direction
+    const axes=[
+      {x:1,y:0},{x:0,y:1},                       // AABB axes
+      normalize({x:-edge0.y,y:edge0.x}),         // normal to edge0
+      normalize({x:-edge1.y,y:edge1.x})          // normal to edge1
+    ];
+
+    let minOverlap=Infinity, smallestAxis=null;
+
+    for(const axis of axes){
+      const pa=project(a,axis), pb=project(b,axis);
+      const overlap=overlapAmount(pa,pb);
+      if(overlap<=0) return null; // separated
+      if(overlap<minOverlap){minOverlap=overlap;smallestAxis=axis;}
+    }
+
+    // MTV direction: from platform center to player center
+    const centerDelta={
+      x:(player.x+SIZE.w/2)-(plat.x+plat.w/2),
+      y:(player.y+SIZE.h/2)-(plat.y+plat.h/2)
+    };
+    if(dot(centerDelta,smallestAxis)<0) smallestAxis={x:-smallestAxis.x,y:-smallestAxis.y};
+
+    return {axis:smallestAxis,depth:minOverlap,rotation:plat.rotation||0};
   }
 
-  // --- Render Loop ---
-  let running = true;
-  function render() {
-    if (!running) return;
-    if (!world) {
-      requestAnimationFrame(render);
+  // --- Resolve collisions with stability iterations ---
+  function resolvePlayer(player,platforms){
+    if(!platforms || !Array.isArray(platforms) || platforms.length===0) {
+      if(player.currentRotation === undefined || !Number.isFinite(player.currentRotation)) player.currentRotation = 0;
+      player.currentRotation += (0 - player.currentRotation) * 0.2;
       return;
     }
 
+    let grounded=false, groundRot=0;
+
+    for(let iter=0; iter<3; iter++){
+      let any=false;
+      for(const plat of platforms){
+        const res=satAabbVsRotRect(player,plat);
+        if(res){
+          player.x+=res.axis.x*res.depth;
+          player.y+=res.axis.y*res.depth;
+          any=true;
+          if(dot(res.axis,{x:0,y:-1})>0.5){grounded=true;groundRot=res.rotation;}
+        }
+      }
+      if(!any) break;
+    }
+
+    const target = grounded ? groundRot : 0;
+    if(player.currentRotation === undefined || !Number.isFinite(player.currentRotation)) player.currentRotation = 0;
+    const delta = target - player.currentRotation;
+    const lerp = 0.2;
+    player.currentRotation = Math.abs(delta) < 0.3 ? target : (player.currentRotation + delta * lerp);
+  }
+
+  // --- Render Loop ---
+  function render(){
+    if(!world) return requestAnimationFrame(render);
+
+    if(world?.platforms){
+      for(const p of Object.values(players)){
+        resolvePlayer(p, world.platforms);
+      }
+    }
+
     const me = players[myUsername];
-    const viewW = canvas.clientWidth;
-    const viewH = canvas.clientHeight;
+    const camX = Math.max(0, Math.min(((me && me.x) ? me.x : 0) - canvas.width/2, world.width - canvas.width));
+    const camY = Math.max(0, Math.min(((me && me.y) ? me.y : 0) - canvas.height/2, world.height - canvas.height));
 
-    const camX = clamp((me?.x || 0) - viewW / 2, 0, Math.max(0, (world.width || 0) - viewW));
-    const camY = clamp((me?.y || 0) - viewH / 2, 0, Math.max(0, (world.height || 0) - viewH));
-
-    ctx.clearRect(0, 0, viewW, viewH);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.save();
-    ctx.translate(-camX, -camY);
+    ctx.translate(-camX,-camY);
 
     // Background
     ctx.fillStyle = '#222';
-    ctx.fillRect(0, 0, world.width || 0, world.height || 0);
+    ctx.fillRect(0,0,world.width,world.height);
 
     // Platforms
-    const plats = Array.isArray(world?.platforms) ? world.platforms : [];
-    for (const plat of plats) drawPlatform(plat);
+    if (Array.isArray(world.platforms)) {
+      for(const plat of world.platforms) drawPlatform(plat);
+    }
 
     // Players
-    for (const [u, p] of Object.entries(players)) {
-      // Detect slope under player (world coords, not screen)
-      let targetRotation = 0;
-      for (const plat of plats) {
-        if (
-          aabbVsRotRect(
-            p.x, p.y,
-            SIZE.w, SIZE.h,
-            plat
-          )
-        ) {
-          targetRotation = plat.rotation || 0;
-          break;
-        }
-      }
-
-      // Smooth rotation toward slope with snap threshold
-      if (p.currentRotation === undefined) p.currentRotation = 0;
-      const lerpFactor = 0.15;   // speed of easing
-      const snapThreshold = 0.5; // degrees to snap when close
-      let delta = targetRotation - p.currentRotation;
-
-      // Wrap for shortest path (-180..180)
-      delta = ((delta + 180) % 360) - 180;
-
-      if (Math.abs(delta) < snapThreshold) {
-        p.currentRotation = targetRotation;
-      } else {
-        p.currentRotation += delta * lerpFactor;
-        // Optional clamp for extremes
-        if (p.currentRotation > 89) p.currentRotation = 89;
-        if (p.currentRotation < -89) p.currentRotation = -89;
-      }
-
-      drawPlayer(u, p);
-    }
+    for(const [u,p] of Object.entries(players)) drawPlayer(u,p);
 
     ctx.restore();
     requestAnimationFrame(render);
@@ -431,6 +350,5 @@
   // --- Start Render Loop ---
   requestAnimationFrame(render);
 </script>
-
 </body>
 </html>
