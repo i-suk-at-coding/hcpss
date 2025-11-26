@@ -82,14 +82,6 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    const messages=document.getElementById('messages');
-    const chatForm=document.getElementById('chatForm');
-    const chatInput=document.getElementById('chatInput');
-    const playerList=document.getElementById('playerList');
-    const usernameLabel=document.getElementById('username');
-    const countLabel=document.getElementById('count');
-    const editorBtn=document.getElementById('editorBtn');
-
     editorBtn.addEventListener('click',()=>{window.location.href='/map-editor.html';});
 
     let myUsername=null, world=null, players={};
