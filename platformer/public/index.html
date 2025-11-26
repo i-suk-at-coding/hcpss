@@ -238,17 +238,20 @@
     return [{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}];
   }
   function getRotRectCorners(p){
-    const cx=p.x+p.w/2, cy=p.y+p.h/2, rad=(p.rotation||0)*Math.PI/180;
-    const local = [
-      { x: -p.w/2, y: -p.h/2 },
-      { x:  p.w/2, y: -p.h/2 },
-      { x:  p.w/2, y:  p.h/2 },
-      { x: -p.w/2, y:  p.h/2 }
-    ];
-
-    return local.map(v=>({x:cx+v[0]*Math.cos(rad)-v[1]*Math.sin(rad),
-                          y:cy+v[0]*Math.sin(rad)+v[1]*Math.cos(rad)}));
-  }
+  const cx = p.x + p.w/2;
+  const cy = p.y + p.h/2;
+  const rad = (p.rotation || 0) * Math.PI/180;
+  const local = [
+    { x: -p.w/2, y: -p.h/2 },
+    { x:  p.w/2, y: -p.h/2 },
+    { x:  p.w/2, y:  p.h/2 },
+    { x: -p.w/2, y:  p.h/2 }
+  ];
+  return local.map(v => ({
+    x: cx + v.x * Math.cos(rad) - v.y * Math.sin(rad),
+    y: cy + v.x * Math.sin(rad) + v.y * Math.cos(rad)
+  }));
+}
   function project(corners,axis){
     let min=Infinity,max=-Infinity;
     for(const c of corners){const s=dot(c,axis);if(s<min)min=s;if(s>max)max=s;}
