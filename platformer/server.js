@@ -16,26 +16,29 @@ const GRAVITY = 1600;
 const WORLD = {
   width: 5000,
   height: 2000,
-  platforms: [  {"x":286.0866062437059,"y":1205.7955298677705,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"normal"},
-{"x":681.5850956696878,"y":1205.7955298677705,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"normal"},
-{"x":1068.9707955689828,"y":1205.7955298677705,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"normal"},
-{"x":1434.0463242698893,"y":1205.7955298677705,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"normal"},
-{"x":1719.6880680979568,"y":1204.6614737222117,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"normal"},
-{"x":316.5095669687815,"y":1163.257725766425,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"bounce"},
-{"x":685.6414904330312,"y":1080.3090077688007,"w":405.6394763343404,"h":42.53780410134581,"rotation":-25.848396921234784,"material":"lava"},
-{"x":1052.7452165156092,"y":948.4418150546285,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"ice"},
-{"x":1557.766364551863,"y":648.5502961401405,"w":405.6394763343404,"h":42.53780410134581,"rotation":-55.89327400874002,"material":"normal"},
-{"x":1726.1067472306145,"y":1165.3846159714922,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"sticky"},
-{"x":1322.4954682779457,"y":1163.257725766425,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"sticky"},
-{"x":1744.3605236656597,"y":1063.2938861282623,"w":405.6394763343404,"h":42.53780410134581,"rotation":-20.004195272804814,"material":"bounce"},
-{"x":1210.944612286002,"y":389.06969112193093,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"bounce"},
-{"x":841.8126888217523,"y":633.6620647046695,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"lava"},
-{"x":683.6132930513595,"y":495.41420137529553,"w":405.6394763343404,"h":42.53780410134581,"rotation":-145.36663147729428,"material":"ice"},
-{"x":782.994964753273,"y":194.43570034393207,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"sticky"},
-{"x":195.75158927015698,"y":210.2311766958503,"w":405.6394763343404,"h":42.53780410134581,"rotation":61.936741224062125,"material":"normal"},
-{"x":1535.4561933534744,"y":170,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"ice"},
-{"x":478.76535750251765,"y":725.1183435225628,"w":405.6394763343404,"h":42.53780410134581,"rotation":-24.412688363272864,"material":"bounce"},
-{"x":136,"y":533.6982250665067,"w":405.6394763343404,"h":42.53780410134581,"rotation":0,"material":"normal"} ] };
+  platforms: [
+    {"x":286.08,"y":1205.79,"w":405.63,"h":42.53,"rotation":0,"material":"normal"},
+    {"x":681.58,"y":1205.79,"w":405.63,"h":42.53,"rotation":0,"material":"normal"},
+    {"x":1068.97,"y":1205.79,"w":405.63,"h":42.53,"rotation":0,"material":"normal"},
+    {"x":1434.04,"y":1205.79,"w":405.63,"h":42.53,"rotation":0,"material":"normal"},
+    {"x":1719.68,"y":1204.66,"w":405.63,"h":42.53,"rotation":0,"material":"normal"},
+    {"x":316.50,"y":1163.25,"w":405.63,"h":42.53,"rotation":0,"material":"bounce"},
+    {"x":685.64,"y":1080.30,"w":405.63,"h":42.53,"rotation":-25.84,"material":"lava"},
+    {"x":1052.74,"y":948.44,"w":405.63,"h":42.53,"rotation":0,"material":"ice"},
+    {"x":1557.76,"y":648.55,"w":405.63,"h":42.53,"rotation":-55.89,"material":"normal"},
+    {"x":1726.10,"y":1165.38,"w":405.63,"h":42.53,"rotation":0,"material":"sticky"},
+    {"x":1322.49,"y":1163.25,"w":405.63,"h":42.53,"rotation":0,"material":"sticky"},
+    {"x":1744.36,"y":1063.29,"w":405.63,"h":42.53,"rotation":-20.00,"material":"bounce"},
+    {"x":1210.94,"y":389.06,"w":405.63,"h":42.53,"rotation":0,"material":"bounce"},
+    {"x":841.81,"y":633.66,"w":405.63,"h":42.53,"rotation":0,"material":"lava"},
+    {"x":683.61,"y":495.41,"w":405.63,"h":42.53,"rotation":-145.36,"material":"ice"},
+    {"x":782.99,"y":194.43,"w":405.63,"h":42.53,"rotation":0,"material":"sticky"},
+    {"x":195.75,"y":210.23,"w":405.63,"h":42.53,"rotation":61.93,"material":"normal"},
+    {"x":1535.45,"y":170,"w":405.63,"h":42.53,"rotation":0,"material":"ice"},
+    {"x":478.76,"y":725.11,"w":405.63,"h":42.53,"rotation":-24.41,"material":"bounce"},
+    {"x":136,"y":533.69,"w":405.63,"h":42.53,"rotation":0,"material":"normal"}
+  ]
+};
 
 let players = {};
 let chatHistory = [];
@@ -56,8 +59,9 @@ io.on('connection', (socket) => {
   io.emit('player join', { username, state: players[username] });
 
   socket.on('input', (input) => {
-    const p = players[username];
-    if (p) p.input = input;
+    if (players[username]) {
+      players[username].input = input;
+    }
   });
 
   socket.on('chat message', (text) => {
@@ -102,6 +106,9 @@ function spawnPlayer(username) {
 
 // Physics with coyote time, buffering, materials
 function stepPlayer(p, dt) {
+  const input = p.input && typeof p.input === 'object' ? p.input : { left: false, right: false, up: false };
+  p.input = input;
+
   const ACCEL = 1500;
   const FRICTION = 1200;
   const MAX_SPEED = 300;
@@ -114,12 +121,12 @@ function stepPlayer(p, dt) {
   else p.coyoteTimer = Math.max(0, p.coyoteTimer - dt);
 
   p.jumpBuffer = Math.max(0, p.jumpBuffer - dt);
-  if (p.input.up) p.jumpBuffer = JUMP_BUFFER;
+  if (input.up) p.jumpBuffer = JUMP_BUFFER;
 
-  if (p.input.left) { p.vx -= ACCEL * dt; p.dir = -1; }
-  if (p.input.right) { p.vx += ACCEL * dt; p.dir = 1; }
+  if (input.left) { p.vx -= ACCEL * dt; p.dir = -1; }
+  if (input.right) { p.vx += ACCEL * dt; p.dir = 1; }
 
-  if (!p.input.left && !p.input.right) {
+  if (!input.left && !input.right) {
     if (p.vx > 0) p.vx = Math.max(0, p.vx - FRICTION * dt);
     else if (p.vx < 0) p.vx = Math.min(0, p.vx + FRICTION * dt);
   }
@@ -138,39 +145,21 @@ function stepPlayer(p, dt) {
   p.y += p.vy * dt;
 
   // Bounds
-  if (p.x < 0) p.x = 0;
-  if (p.x + w > WORLD.width) p.x = WORLD.width - w;
+  if (p.x < 0) { p.x = 0; p.vx = Math.max(0, p.vx); }
+  if (p.x + w > WORLD.width) { p.x = WORLD.width - w; p.vx = Math.min(0, p.vx); }
   if (p.y + h > WORLD.height) {
     p.y = WORLD.height - h;
     p.vy = 0;
     p.onGround = true;
+  } else if (p.y < 0) {
+    p.y = 0;
+    p.vy = Math.max(0, p.vy);
   } else {
     p.onGround = false;
   }
 
-  // Collisions (approximate rotated platforms by their AABB)
-  for (const plat of WORLD.platforms) {
-    const aabb = aabbOfRotRect(plat);
-    const collision = aabbResolve(p, w, h, aabb);
-    if (!collision) continue;
-
-    if (collision === 'top') {
-      p.vy = 0;
-      p.onGround = true;
-      p.coyoteTimer = COYOTE_TIME;
-      switch (plat.material) {
-        case "ice":    p.vx *= 1.05; break;
-        case "lava":   respawnPlayer(p); break;
-        case "bounce": p.vy = -800; break;
-        case "sticky": p.vx *= 0.5; break;
-      }
-    } else if (collision === 'bottom') {
-      p.vy = Math.max(p.vy, 0);
-    } else {
-      // side hit
-      p.vx = 0;
-    }
-  }
+  // Collisions
+  resolveCollisionsWithPlatforms(p, w, h, WORLD.platforms, COYOTE_TIME);
 }
 
 // Approximate rotated rect as axis-aligned bounding box
@@ -184,7 +173,7 @@ function aabbOfRotRect(plat) {
   const corners = [
     {x: -hw, y: -hh}, {x: hw, y: -hh},
     {x: hw, y: hh},   {x: -hw, y: hh}
-  ].map(pt => ({
+    ].map(pt => ({
     x: cx + pt.x * cos - pt.y * sin,
     y: cy + pt.x * sin + pt.y * cos
   }));
@@ -201,17 +190,22 @@ function aabbResolve(p, pw, ph, plat) {
   const ax1 = p.x, ay1 = p.y, ax2 = p.x + pw, ay2 = p.y + ph;
   const bx1 = plat.x, by1 = plat.y, bx2 = plat.x + plat.w, by2 = plat.y + plat.h;
 
-  if (ax2 < bx1 || ax1 > bx2 || ay2 < by1 || ay1 > by2) return null;
+  if (ax2 <= bx1 || ax1 >= bx2 || ay2 <= by1 || ay1 >= by2) return null;
 
   const overlapX = Math.min(ax2 - bx1, bx2 - ax1);
   const overlapY = Math.min(ay2 - by1, by2 - ay1);
 
+  const aCenterX = (ax1 + ax2) / 2;
+  const aCenterY = (ay1 + ay2) / 2;
+  const bCenterX = (bx1 + bx2) / 2;
+  const bCenterY = (by1 + by2) / 2;
+
   if (overlapX < overlapY) {
-    if (p.vx > 0) p.x -= overlapX;
+    if (aCenterX < bCenterX) p.x -= overlapX;
     else p.x += overlapX;
     return 'side';
   } else {
-    if (p.vy > 0) {
+    if (aCenterY < bCenterY) {
       p.y -= overlapY;
       return 'top';
     } else {
@@ -221,14 +215,53 @@ function aabbResolve(p, pw, ph, plat) {
   }
 }
 
+function resolveCollisionsWithPlatforms(p, w, h, platforms, COYOTE_TIME) {
+  if (!Array.isArray(platforms)) return;
+  let groundedThisTick = false;
+
+  for (let iter = 0; iter < 3; iter++) {
+    let any = false;
+    for (const plat of platforms) {
+      const aabb = aabbOfRotRect(plat);
+      const collision = aabbResolve(p, w, h, aabb);
+      if (!collision) continue;
+      any = true;
+
+      if (collision === 'top') {
+        p.vy = Math.min(p.vy, 0);
+        p.onGround = true;
+        groundedThisTick = true;
+        p.coyoteTimer = COYOTE_TIME;
+        switch (plat.material) {
+          case "ice":    p.vx *= 1.05; break;
+          case "lava":   respawnPlayer(p); break;
+          case "bounce": p.vy = -800; break;
+          case "sticky": p.vx *= 0.5; break;
+        }
+      } else if (collision === 'bottom') {
+        p.vy = Math.max(p.vy, 0);
+      } else {
+        p.vx = 0;
+      }
+    }
+    if (!any) break;
+  }
+
+  if (!groundedThisTick && p.y + h < WORLD.height) {
+    p.onGround = false;
+  }
+}
+
 function respawnPlayer(p) {
-  p.x = 80;
-  p.y = 500;
+  const spawned = spawnPlayer('temp');
+  p.x = spawned.x;
+  p.y = spawned.y;
   p.vx = 0;
   p.vy = 0;
   p.onGround = false;
   p.coyoteTimer = 0;
   p.jumpBuffer = 0;
+  p.dir = 1;
 }
 
 function colorFromName(name) {
