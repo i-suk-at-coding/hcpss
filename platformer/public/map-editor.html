@@ -52,14 +52,12 @@
   </div>
 <script>
   document.getElementById('helpBtn').addEventListener('click', () => {
-      alert("Controls:\n- Arrow keys/WASD: Move camera\n- Click+Drag: Move block\n- Drag box: Select multiple\n- Rotation handle above block: Rotate\n- Toolbar buttons: Add/Delete/Save/Copy/Load");
+    alert("Controls:\n- Arrow keys/WASD: Move camera\n- Click+Drag: Move block\n- Drag box: Select multiple\n- Corner handles: Scale block\n- Rotation handle above block: Rotate\n- Toolbar buttons: Add/Delete/Save/Copy/Load");
   });
 
-   // --- Canvas and context ---
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
 
-  // --- UI elements ---
   const addBtn = document.getElementById('addBtn');
   const deleteBtn = document.getElementById('deleteBtn');
   const saveBtn = document.getElementById('saveBtn');
@@ -70,36 +68,38 @@
   const jsonInput = document.getElementById('jsonInput');
   const output = document.getElementById('editorOutput');
 
-  // --- World and camera state ---
   const worldWidth = 4000, worldHeight = 2000;
   let cameraX = 0, cameraY = 0;
   let world = { platforms: [] };
   let selectedIndices = [];
 
-  // --- Dragging state ---
-  let dragHandle = null;
+  // Dragging / transform state
+  let dragOffsets = {};
   let draggingPlatform = false;
   let rotatingPlatform = false;
-  let dragOffsetX = 0, dragOffsetY = 0;
+  let scalingPlatform = false;
+  let activeHandle = null;
+  let startMouse = null;
+  let startPlatform = null;
+  let startRotation = 0;
 
-  // --- Selection state ---
+  // Group scaling state
+  let scalingGroup = false;
+  let startBounds, originalPlatforms;
+
+  // Selection box state
   let selectingBox = false;
   let selectStartX = 0, selectStartY = 0;
   let selectCurrentX = 0, selectCurrentY = 0;
-  let scalingGroup = false;
-  let startBounds, startMouse;
 
-
-  // --- Canvas resize ---
   function resizeCanvas() {
-      const jsonPanel = document.getElementById('jsonPanel');
-      const panelWidth = jsonPanel ? jsonPanel.offsetWidth : 0;
-      canvas.width = window.innerWidth - panelWidth;
-      canvas.height = window.innerHeight;
-    }
-    
+    const jsonPanel = document.getElementById('jsonPanel');
+    const panelWidth = jsonPanel ? jsonPanel.offsetWidth : 0;
+    canvas.width = window.innerWidth - panelWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeCanvas);
 
-  // --- Helpers ---
   function getHandles(p) {
     return [
       { x: p.x, y: p.y },
@@ -109,380 +109,176 @@
     ];
   }
 
-// --- Helpers ---
-function getGroupBounds() {
+  function getGroupBounds() {
     const selected = selectedIndices.map(i => world.platforms[i]);
     const minX = Math.min(...selected.map(p => p.x));
     const minY = Math.min(...selected.map(p => p.y));
     const maxX = Math.max(...selected.map(p => p.x + p.w));
     const maxY = Math.max(...selected.map(p => p.y + p.h));
     return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
-}
+  }
 
-// --- Redraw everything ---
-function redraw() {
+  function redraw() {
     ctx.fillStyle = '#222';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Floor
-    ctx.fillStyle = '#444';
-    ctx.fillRect(-cameraX, worldHeight - 40 - cameraY, worldWidth, 40);
-
-    // Platforms
     world.platforms.forEach((p, i) => {
-        ctx.save();
-        ctx.translate(p.x - cameraX + p.w / 2, p.y - cameraY + p.h / 2);
-        ctx.rotate((p.rotation * Math.PI) / 180);
-        ctx.fillStyle =
-            p.material === 'ice'    ? '#3b82f6' :
-            p.material === 'lava'   ? '#ef4444' :
-            p.material === 'bounce' ? '#facc15' :
-            p.material === 'sticky' ? '#10b981' :
-                                      '#888';
-        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-        ctx.restore();
+      ctx.save();
+      ctx.translate(p.x - cameraX + p.w/2, p.y - cameraY + p.h/2);
+      ctx.rotate((p.rotation||0) * Math.PI/180);
+      ctx.fillStyle =
+        p.material==='ice' ? '#3b82f6' :
+        p.material==='lava' ? '#ef4444' :
+        p.material==='bounce' ? '#facc15' :
+        p.material==='sticky' ? '#10b981' : '#888';
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
 
-        // Selection handles
-        if (selectedIndices.includes(i)) {
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
+      if (selectedIndices.includes(i)) {
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
 
-            // Corner handles
-            ctx.fillStyle = '#fff';
-            getHandles(p).forEach(h =>
-                ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8)
-            );
+        ctx.fillStyle = '#fff';
+        getHandles(p).forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
 
-            // Rotation handle
-            const cx = p.x + p.w / 2;
-            const hy = p.y - 40;
-            ctx.fillStyle = '#0ff';
-            ctx.beginPath();
-            ctx.arc(cx - cameraX, hy - cameraY, 6, 0, Math.PI * 2);
-            ctx.fill();
-            p.rotationHandle = { x: cx, y: hy };
-        }
-    });
-
-    // Group box
-    if (selectedIndices.length > 1) {
-        const bounds = getGroupBounds();
-        ctx.strokeStyle = '#0ff';
-        ctx.strokeRect(bounds.x - cameraX, bounds.y - cameraY, bounds.w, bounds.h);
-
+        const cx = p.x + p.w/2;
+        const hy = p.y - 40;
         ctx.fillStyle = '#0ff';
-        [
-            { x: bounds.x, y: bounds.y },
-            { x: bounds.x + bounds.w, y: bounds.y },
-            { x: bounds.x, y: bounds.y + bounds.h },
-            { x: bounds.x + bounds.w, y: bounds.y + bounds.h }
-        ].forEach(h =>
-            ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8)
-        );
-    }
-
-    // Marquee selection
-    if (selectingBox) {
-        const x = Math.min(selectStartX, selectCurrentX) - cameraX;
-        const y = Math.min(selectStartY, selectCurrentY) - cameraY;
-        const w = Math.abs(selectCurrentX - selectStartX);
-        const h = Math.abs(selectCurrentY - selectStartY);
-        ctx.strokeStyle = '#0ff';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x, y, w, h);
-        ctx.fillStyle = 'rgba(0,255,255,0.2)';
-        ctx.fillRect(x, y, w, h);
-    }
-
-    // Compact JSON output
-    output.value = world.platforms
-        .map(p => JSON.stringify({
-            x: p.x, y: p.y, w: p.w, h: p.h,
-            rotation: p.rotation, material: p.material
-        }))
-        .join(',\n');
-}
-
-// --- Buttons ---
-addBtn.addEventListener('click', () => {
-    world.platforms.push({
-        x: cameraX + 100,
-        y: cameraY + 100,
-        w: 200,
-        h: 20,
-        rotation: 0,
-        material: materialSelect.value
+        ctx.beginPath();
+        ctx.arc(cx - cameraX, hy - cameraY, 6, 0, Math.PI*2);
+        ctx.fill();
+        p.rotationHandle = { x: cx, y: hy };
+      }
     });
-    selectedIndices = [world.platforms.length - 1];
-});
 
-deleteBtn.addEventListener('click', () => {
-    world.platforms = world.platforms.filter((_, i) => !selectedIndices.includes(i));
+    output.value = world.platforms.map(p => JSON.stringify(p)).join(',\n');
+  }
+
+  // Toolbar buttons
+  addBtn.addEventListener('click', () => {
+    world.platforms.push({ x: cameraX+100, y: cameraY+100, w:200, h:20, rotation:0, material:materialSelect.value });
+    selectedIndices = [world.platforms.length-1];
+    redraw();
+  });
+  deleteBtn.addEventListener('click', () => {
+    world.platforms = world.platforms.filter((_,i)=>!selectedIndices.includes(i));
     selectedIndices = [];
-});
+    redraw();
+  });
+  saveBtn.addEventListener('click', () => { output.value = JSON.stringify(world.platforms,null,2); });
+  copyBtn.addEventListener('click', () => { output.select(); document.execCommand('copy'); alert('JSON copied!'); });
 
-saveBtn.addEventListener('click', () => {
-    output.value = world.platforms.map(p => JSON.stringify(p)).join('\n');
-});
-
-copyBtn.addEventListener('click', () => {
-    output.select();
-    document.execCommand('copy');
-    alert('JSON copied!');
-});
-
-loadFile.addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = evt => {
-        try {
-            const data = JSON.parse(evt.target.result);
-            world.platforms = Array.isArray(data) ? data : data.platforms || [];
-            selectedIndices = [];
-        } catch {
-            alert('Error loading map');
-        }
-    };
-    reader.readAsText(file);
-});
-
-// --- Load from text ---
-loadTextBtn.addEventListener('click', () => {
-    try {
-        const raw = jsonInput.value.trim();
-        let parsed;
-
-        if (raw.startsWith('[') && raw.endsWith(']')) {
-            parsed = JSON.parse(raw);
-        } else {
-            const lines = raw.split('\n')
-                .map(l => l.trim())
-                .filter(Boolean)
-                .map(l => l.replace(/,?\s*$/, ''));
-            parsed = JSON.parse(`[${lines.join(',')}]`);
-        }
-
-        if (!Array.isArray(parsed)) throw new Error('Expected an array');
-
-        world.platforms = parsed.map(p => ({
-            x: Number(p.x), y: Number(p.y),
-            w: Number(p.w), h: Number(p.h),
-            rotation: Number(p.rotation),
-            material: String(p.material)
-        }));
-        selectedIndices = [];
-        redraw();
-    } catch (err) {
-        alert(`Invalid JSON text: ${err.message}`);
-    }
-});
-
-// --- Helpers for rotated hitboxes ---
-function getRotatedCorners(p) {
-    const cx = p.x + p.w / 2;
-    const cy = p.y + p.h / 2;
-    const rad = (p.rotation * Math.PI) / 180;
-
-    const corners = [
-        { x: p.x,       y: p.y },
-        { x: p.x + p.w, y: p.y },
-        { x: p.x + p.w, y: p.y + p.h },
-        { x: p.x,       y: p.y + p.h }
-    ];
-
-    return corners.map(c => {
-        const dx = c.x - cx;
-        const dy = c.y - cy;
-        return {
-            x: cx + dx * Math.cos(rad) - dy * Math.sin(rad),
-            y: cy + dx * Math.sin(rad) + dy * Math.cos(rad)
-        };
-    });
-}
-
-function pointInPolygon(px, py, corners) {
-    let inside = false;
-    for (let i = 0, j = corners.length - 1; i < corners.length; j = i++) {
-        const xi = corners[i].x, yi = corners[i].y;
-        const xj = corners[j].x, yj = corners[j].y;
-        const intersect = ((yi > py) !== (yj > py)) &&
-                          (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
-        if (intersect) inside = !inside;
-    }
-    return inside;
-}
-
-function rectIntersectsPolygon(x1, y1, x2, y2, corners) {
-    // polygon corner inside rect
-    if (corners.some(c => c.x >= x1 && c.x <= x2 && c.y >= y1 && c.y <= y2)) {
-        return true;
-    }
-    // rect corner inside polygon
-    const rectCorners = [
-        { x: x1, y: y1 },
-        { x: x2, y: y1 },
-        { x: x2, y: y2 },
-        { x: x1, y: y2 }
-    ];
-    if (rectCorners.some(rc => pointInPolygon(rc.x, rc.y, corners))) {
-        return true;
-    }
-    return false;
-}
-
-// --- Group scaling state ---
-let originalPlatforms = [];
-
-// --- Mouse handlers ---
-canvas.addEventListener('mousedown', e => {
+  // Mouse events
+  canvas.addEventListener('mousedown', e => {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left + cameraX;
     const my = e.clientY - rect.top + cameraY;
 
-    // Group scaling check
-    if (selectedIndices.length > 1) {
-        const bounds = getGroupBounds();
-        const corners = [
-            { x: bounds.x, y: bounds.y },
-            { x: bounds.x + bounds.w, y: bounds.y },
-            { x: bounds.x, y: bounds.y + bounds.h },
-            { x: bounds.x + bounds.w, y: bounds.y + bounds.h }
-        ];
-        if (corners.some(c => Math.hypot(mx - c.x, my - c.y) < 10)) {
-            scalingGroup = true;
-            startBounds = bounds;
-            startMouse = { mx, my };
-            originalPlatforms = selectedIndices.map(i => {
-                const p = world.platforms[i];
-                return {
-                    i,
-                    relX: (p.x - bounds.x) / bounds.w,
-                    relY: (p.y - bounds.y) / bounds.h,
-                    relW: p.w / bounds.w,
-                    relH: p.h / bounds.h
-                };
-            });
-            return;
-        }
-    }
-
-    // Normal selection / dragging
-    const found = world.platforms.findIndex(p => {
-        const corners = getRotatedCorners(p);
-        return pointInPolygon(mx, my, corners);
-    });
-
-    if (found === -1) {
-        selectingBox = true;
-        selectStartX = mx;
-        selectStartY = my;
-        selectCurrentX = mx;
-        selectCurrentY = my;
-        selectedIndices = [];
-    } else {
-        if (!selectedIndices.includes(found)) {
-            selectedIndices = [found];
-        }
-        dragOffsets = {};
-        selectedIndices.forEach(i => {
-            const p = world.platforms[i];
-            dragOffsets[i] = { dx: mx - p.x, dy: my - p.y };
-        });
-        draggingPlatform = true;
-    }
-});
-
-canvas.addEventListener('mousemove', e => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left + cameraX;
-    const my = e.clientY - rect.top + cameraY;
-
-    if (selectingBox) {
-        selectCurrentX = mx;
-        selectCurrentY = my;
+    // Rotation handle
+    if (selectedIndices.length===1) {
+      const p = world.platforms[selectedIndices[0]];
+      const rh = p.rotationHandle;
+      if (rh && Math.hypot(mx-rh.x,my-rh.y)<10) {
+        rotatingPlatform=true;
+        startMouse={mx,my};
+        startRotation=p.rotation;
         return;
+      }
+      // Corner handles for scaling
+      const handles=getHandles(p);
+      const foundHandle=handles.findIndex(h=>Math.hypot(mx-h.x,my-h.y)<8);
+      if(foundHandle!==-1){
+        scalingPlatform=true;
+        activeHandle=foundHandle;
+        startMouse={mx,my};
+        startPlatform={...p};
+        return;
+      }
     }
 
-    if (draggingPlatform && selectedIndices.length > 0) {
-        selectedIndices.forEach(i => {
-            const p = world.platforms[i];
-            p.x = mx - dragOffsets[i].dx;
-            p.y = my - dragOffsets[i].dy;
-        });
+    // Normal selection
+    const found=world.platforms.findIndex(p=>mx>=p.x&&mx<=p.x+p.w&&my>=p.y&&my<=p.y+p.h);
+    if(found===-1){
+      selectingBox=true;
+      selectStartX=mx; selectStartY=my;
+      selectCurrentX=mx; selectCurrentY=my;
+      selectedIndices=[];
+    } else {
+      if(!selectedIndices.includes(found)) selectedIndices=[found];
+      dragOffsets={};
+      selectedIndices.forEach(i=>{
+        const p=world.platforms[i];
+        dragOffsets[i]={dx:mx-p.x,dy:my-p.y};
+      });
+      draggingPlatform=true;
+    }
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    const rect=canvas.getBoundingClientRect();
+    const mx=e.clientX-rect.left+cameraX;
+    const my=e.clientY-rect.top+cameraY;
+
+    if(rotatingPlatform && selectedIndices.length===1){
+      const p=world.platforms[selectedIndices[0]];
+      const cx=p.x+p.w/2, cy=p.y+p.h/2;
+      const angle=Math.atan2(my-cy,mx-cx)*180/Math.PI;
+      p.rotation=angle;
+      return;
     }
 
-    if (scalingGroup) {
-        let scaleX = (mx - startBounds.x) / startBounds.w;
-        let scaleY = (my - startBounds.y) / startBounds.h;
-
-        // Shift → uniform scaling
-        if (e.shiftKey) {
-            const uniform = Math.max(scaleX, scaleY);
-            scaleX = uniform;
-            scaleY = uniform;
-        }
-
-        originalPlatforms.forEach(op => {
-            const p = world.platforms[op.i];
-            p.x = startBounds.x + op.relX * startBounds.w * scaleX;
-            p.y = startBounds.y + op.relY * startBounds.h * scaleY;
-            p.w = op.relW * startBounds.w * scaleX;
-            p.h = op.relH * startBounds.h * scaleY;
-        });
-    }
-});
-
-canvas.addEventListener('mouseup', () => {
-    if (selectingBox) {
-        selectingBox = false;
-        const x1 = Math.min(selectStartX, selectCurrentX);
-        const y1 = Math.min(selectStartY, selectCurrentY);
-        const x2 = Math.max(selectStartX, selectCurrentX);
-        const y2 = Math.max(selectStartY, selectCurrentY);
-
-        selectedIndices = world.platforms
-            .map((p, i) => {
-                const corners = getRotatedCorners(p);
-                return rectIntersectsPolygon(x1, y1, x2, y2, corners) ? i : null;
-            })
-            .filter(i => i !== null);
+    if(scalingPlatform && selectedIndices.length===1){
+      const p=world.platforms[selectedIndices[0]];
+      const dx=mx-startMouse.mx, dy=my-startMouse.my;
+      switch(activeHandle){
+        case 0: p.x=startPlatform.x+dx; p.y=startPlatform.y+dy; p.w=startPlatform.w-dx; p.h=startPlatform.h-dy; break;
+        case 1: p.y=startPlatform.y+dy; p.w=startPlatform.w+dx; p.h=startPlatform.h-dy; break;
+        case 2: p.x=startPlatform.x+dx; p.w=startPlatform.w-dx; p.h=startPlatform.h+dy; break;
+        case 3: p.w=startPlatform.w+dx; p.h=startPlatform.h+dy; break;
+      }
+      return;
     }
 
-    draggingPlatform = false;
-    scalingGroup = false;
-});
+    if(draggingPlatform){
+      selectedIndices.forEach(i=>{
+        const p=world.platforms[i];
+        p.x=mx-dragOffsets[i].dx;
+        p.y=my-dragOffsets[i].dy;
+      });
+    }
+  });
 
-// --- Camera scrolling ---
-document.addEventListener('keydown', e => {
-    const step = 50;
-    if (e.key === 'ArrowLeft' || e.key === 'a') {
-        cameraX = Math.max(0, cameraX - step);
-    }
-    if (e.key === 'ArrowRight' || e.key === 'd') {
-        cameraX = Math.min(worldWidth - canvas.width, cameraX + step);
-    }
-    if (e.key === 'ArrowUp' || e.key === 'w') {
-        cameraY = Math.max(0, cameraY - step);
-    }
-    if (e.key === 'ArrowDown' || e.key === 's') {
-        cameraY = Math.min(worldHeight - canvas.height, cameraY + step);
-    }
-});
+  canvas.addEventListener('mouseup', () => {
+    rotatingPlatform=false;
+    scalingPlatform=false;
+    draggingPlatform=false;
+    selectingBox=false;
+    scalingGroup=false;
+  });
 
-// --- Auto-update loop ---
-function gameLoop() {
+  // Camera scroll
+  document.addEventListener('keydown', e => {
+    const step=50;
+    if(e.key==='ArrowLeft'||e.key==='a') cameraX=Math.max(0,cameraX-step);
+    if(e.key==='ArrowRight'||e.key==='d') cameraX=Math.min(worldWidth-canvas.width,cameraX+step);
+        if(e.key==='ArrowUp'||e.key==='w') cameraY=Math.max(0,cameraY-step);
+    if(e.key==='ArrowDown'||e.key==='s') cameraY=Math.min(worldHeight-canvas.height,cameraY+step);
+  });
+
+  // --- Auto-update loop ---
+  function gameLoop() {
     redraw();
     requestAnimationFrame(gameLoop);
-}
+  }
 
-// --- Initialize ---
-window.addEventListener('load', () => {
+  // --- Initialize ---
+  window.addEventListener('load', () => {
     resizeCanvas();
     gameLoop();
-});
-
+  });
 </script>
+</body>
+</html>
+
 </body>
 <html>
