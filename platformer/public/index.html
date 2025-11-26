@@ -145,13 +145,27 @@
 
     const materialColors={normal:"#888",ice:"#3b82f6",lava:"#ef4444",bounce:"#facc15",sticky:"#10b981"};
     function drawPlatform(plat){
+    ctx.fillStyle = materialColors[plat.material] || "#888";
+
+    if (plat.type === "curve" && Array.isArray(plat.points)) {
+      // Draw curve polygon
+      ctx.beginPath();
+      ctx.moveTo(plat.points[0].x, plat.points[0].y);
+      for (let i = 1; i < plat.points.length; i++) {
+        ctx.lineTo(plat.points[i].x, plat.points[i].y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // Draw rectangle
       ctx.save();
-      ctx.translate(plat.x+plat.w/2,plat.y+plat.h/2);
-      ctx.rotate((plat.rotation||0)*Math.PI/180);
-      ctx.fillStyle=materialColors[plat.material]||"#888";
-      ctx.fillRect(-plat.w/2,-plat.h/2,plat.w,plat.h);
+      ctx.translate(plat.x + plat.w/2, plat.y + plat.h/2);
+      ctx.rotate((plat.rotation||0) * Math.PI/180);
+      ctx.fillRect(-plat.w/2, -plat.h/2, plat.w, plat.h);
       ctx.restore();
     }
+  }
+
     function drawPlayer(u,p){
       const rot=Number.isFinite(p.currentRotation)?p.currentRotation:0;
       const dir=(p.dir===1||p.dir===-1)?p.dir:1;
