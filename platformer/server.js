@@ -12,94 +12,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 const TICK_RATE = 60;
 const GRAVITY = 1600;
 
-const WORLD = {
-  width: 5000,
-  height: 2000,
-  platforms: [
-    {
-  "type": "curve",
-  "material": "ice",
-  "points": circleToPolygon(400, 300, 80, 24) // a smooth ice circle
-  }
-  ],
-  spawn: {"x":100,"y":100}
-};
-
-let players = {};
-let chatHistory = [];
-
-// Serve client
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Socket connections
-io.on('connection', (socket) => {
-  const username = "Player" + Math.floor(Math.random() * 10000);
-  players[username] = spawnPlayer(username);
-
-  socket.emit('auth', { username });
-  socket.emit('world', { world: WORLD, players });
-  socket.emit('chat history', chatHistory);
-  io.emit('player join', { username, state: players[username] });
-
-  socket.on('input', (input) => {
-    if (players[username]) players[username].input = input;
-  });
-
-  socket.on('chat message', (text) => {
-    const msg = { user: username, text, time: new Date().toISOString() };
-    chatHistory.push(msg);
-    if (chatHistory.length > 200) chatHistory.shift();
-    io.emit('chat message', msg);
-  });
-
-  socket.on('disconnect', () => {
-    delete players[username];
-    io.emit('player leave', { username });
-  });
-});
-
-// Physics loop
-let last = Date.now();
-setInterval(() => {
-  const now = Date.now();
-  const dt = (now - last) / 1000;
-  last = now;
-
-  for (const p of Object.values(players)) stepPlayer(p, dt);
-  io.emit('state', players);
-}, 1000 / TICK_RATE);
-
-// Spawn
-function spawnPlayer(username) {
-  const spawn = WORLD.spawn || { x: 100, y: 500 }; // ✅ use world.spawn
-  return {
-    x: spawn.x,
-    y: spawn.y,
-    vx: 0, vy: 0,
-    dir: 1,
-    onGround: false,
-    color: colorFromName(username),
-    input: { left: false, right: false, up: false },
-    coyoteTimer: 0,
-    jumpBuffer: 0
-  };
-}
-
-function respawnPlayer(p) {
-  const spawn = WORLD.spawn || { x: 100, y: 500 }; // ✅ use world.spawn
-  p.x = spawn.x;
-  p.y = spawn.y;
-  p.vx = 0;
-  p.vy = 0;
-  p.onGround = false;
-  p.coyoteTimer = 0;
-  p.jumpBuffer = 0;
-  p.dir = 1;
-}
-
-
 // --- SAT helpers ---
 function dot(a,b){return a.x*b.x+a.y*b.y;}
 function sub(a,b){return {x:a.x-b.x,y:a.y-b.y};}
@@ -166,10 +78,9 @@ function satAabbVsPolygon(player, polygonPoints, w, h) {
   return {axis: smallestAxis, depth: minOverlap};
 }
 
-
 // --- Curve helpers ---
 // Approximate a circle into polygon points
-function circleToPolygon(cx, cy, radius, segments=16) {
+function circleToPolygon(cx, cy, radius, segments=24) {
   const pts = [];
   for (let i = 0; i < segments; i++) {
     const angle = (i / segments) * 2 * Math.PI;
@@ -190,6 +101,94 @@ function bezierToPolygon(p0, p1, p2, steps=20) {
     pts.push({x,y});
   }
   return pts;
+}
+
+// --- World ---
+const WORLD = {
+  width: 5000,
+  height: 2000,
+  platforms: [
+    {
+      type: "curve",
+      material: "ice",
+      points: circleToPolygon(400, 300, 80, 24) // a smooth ice circle
+    }
+  ],
+  spawn: { x: 100, y: 100 }
+};
+
+let players = {};
+let chatHistory = [];
+
+// Serve client
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Socket connections
+io.on('connection', (socket) => {
+  const username = "Player" + Math.floor(Math.random() * 10000);
+  players[username] = spawnPlayer(username);
+
+  socket.emit('auth', { username });
+  socket.emit('world', { world: WORLD, players });
+  socket.emit('chat history', chatHistory);
+  io.emit('player join', { username, state: players[username] });
+
+  socket.on('input', (input) => {
+    if (players[username]) players[username].input = input;
+  });
+
+  socket.on('chat message', (text) => {
+    const msg = { user: username, text, time: new Date().toISOString() };
+    chatHistory.push(msg);
+    if (chatHistory.length > 200) chatHistory.shift();
+    io.emit('chat message', msg);
+  });
+
+  socket.on('disconnect', () => {
+    delete players[username];
+    io.emit('player leave', { username });
+  });
+});
+
+// Physics loop
+let last = Date.now();
+setInterval(() => {
+  const now = Date.now();
+  const dt = (now - last) / 1000;
+  last = now;
+
+  for (const p of Object.values(players)) stepPlayer(p, dt);
+  io.emit('state', players);
+}, 1000 / TICK_RATE);
+
+// Spawn
+function spawnPlayer(username) {
+  const spawn = WORLD.spawn || { x: 100, y: 500 };
+  return {
+    x: spawn.x,
+    y: spawn.y,
+    vx: 0, vy: 0,
+    dir: 1,
+    onGround: false,
+    color: colorFromName(username),
+    input: { left: false, right: false, up: false },
+    coyoteTimer: 0,
+    jumpBuffer: 0
+  };
+}
+
+function respawnPlayer(p) {
+  const spawn = WORLD.spawn || { x: 100, y: 500 };
+  p.x = spawn.x;
+  p.y = spawn.y;
+  p.vx = 0;
+  p.vy = 0;
+  p.onGround = false;
+  p.coyoteTimer = 0;
+  p.jumpBuffer = 0;
+  p.dir = 1;
 }
 
 // Physics step
@@ -225,8 +224,10 @@ function stepPlayer(p, dt) {
   // Collisions with SAT
   let grounded=false;
   for(const plat of WORLD.platforms){
-    // If it's a rect, get corners; if it's a curve, use its polygon points
+    // Choose points: curve vs rect
     const points = plat.type === "curve" ? plat.points : getRotRectCorners(plat);
+    if (!points || points.length < 3) continue; // guard against bad data
+
     const res = satAabbVsPolygon(p, points, w, h);
     if(res){
       p.x += res.axis.x * res.depth;
@@ -242,12 +243,10 @@ function stepPlayer(p, dt) {
         }
       }
     }
-  } // ✅ closing brace for the for-loop
+  }
 
   p.onGround = grounded;
 }
-
-function respawnPlayer(p){p.x=100;p.y=500;p.vx=0;p.vy=0;p.onGround=false;p.coyoteTimer=0;p.jumpBuffer=0;p.dir=1;}
 
 function colorFromName(name){
   let hash=0;for(let i=0;i<name.length;i++){hash=(hash*31+name.charCodeAt(i))|0;}
