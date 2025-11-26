@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Platformer + Chat</title>
+  <title>Multiplayer SAT Demo</title>
   <style>
     html,body{margin:0;padding:0;height:100%}
     body{margin:0;display:flex;height:100vh;background:#0f0f0f;color:#eee;font-family:"Segoe UI",sans-serif}
@@ -32,332 +32,227 @@
 <body>
   <div id="left">
     <div id="hud">
-      <span>
-        <span id="username">You:</span>
-        <button id="editorBtn">Map Editor</button>
-      </span>
+      <span id="username">You:</span>
       <span id="count">Players: 0</span>
+      <button id="editorBtn">Map Editor</button>
     </div>
     <div id="game">
-      <canvas id="canvas"></canvas>
+      <canvas id="canvas" width="800" height="600"></canvas>
     </div>
   </div>
-
   <div id="right">
     <div id="players">
-      <h3>Online Players</h3>
+      <h3>Players</h3>
       <ul id="playerList"></ul>
     </div>
     <ul id="messages"></ul>
     <form id="chatForm">
-      <input id="chatInput" autocomplete="off" placeholder="Type a message..." />
+      <input id="chatInput" autocomplete="off" />
       <button>Send</button>
     </form>
   </div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script>
-  // =========================
-  // NON-COLLISION SECTION (TOP)
-  // =========================
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // === Client logic (auth, chat, drawing, SAT collision) ===
+    const socket = io();
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const messages=document.getElementById('messages');
+    const chatForm=document.getElementById('chatForm');
+    const chatInput=document.getElementById('chatInput');
+    const playerList=document.getElementById('playerList');
+    const usernameLabel=document.getElementById('username');
+    const countLabel=document.getElementById('count');
+    const editorBtn=document.getElementById('editorBtn');
 
-  const socket = io();
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
+    editorBtn.addEventListener('click',()=>{window.location.href='/map-editor.html';});
 
-  const messages = document.getElementById('messages');
-  const chatForm = document.getElementById('chatForm');
-  const chatInput = document.getElementById('chatInput');
-  const playerList = document.getElementById('playerList');
-  const usernameLabel = document.getElementById('username');
-  const countLabel = document.getElementById('count');
+    let myUsername=null, world=null, players={};
+    const SIZE={w:40,h:60};
 
-  function resizeCanvas() {
-    const right = document.getElementById('right');
-    const hud = document.getElementById('hud');
-    canvas.width = window.innerWidth - (right ? right.offsetWidth : 0);
-    canvas.height = window.innerHeight - (hud ? hud.offsetHeight : 0);
-  }
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-
-  const editorBtn = document.getElementById('editorBtn');
-  if (editorBtn) {
-    editorBtn.addEventListener('click', () => {
-      window.location.href = '/map-editor.html';
+    socket.on('auth',({username})=>{
+      myUsername=username;
+      usernameLabel.textContent=`You: ${username}`;
     });
-  }
-
-  let myUsername = null;
-  let world = null;
-  let players = {};
-  const SIZE = { w: 40, h: 60 };
-
-  // --- Socket Events ---
-  socket.on('auth', ({ username }) => {
-    myUsername = username;
-    if (usernameLabel) usernameLabel.textContent = `You: ${username}`;
-  });
-
-  socket.on('world', ({ world: w, players: p }) => {
-    world = w;
-    players = (p && typeof p === 'object') ? p : {};
-    updatePlayerList();
-  });
-
-  socket.on('player join', ({ username, state }) => {
-    if (!players || typeof players !== 'object') players = {};
-    players[username] = state || {};
-    updatePlayerList();
-  });
-
-  socket.on('player leave', ({ username }) => {
-    if (players && players[username]) delete players[username];
-    updatePlayerList();
-  });
-
-  socket.on('state', (serverPlayers) => {
-    if (serverPlayers && typeof serverPlayers === 'object') {
-      players = serverPlayers;
-      updatePlayerList();
-    }
-  });
-
-  // --- Input Handling ---
-  const input = { left: false, right: false, up: false };
-  const keymap = {
-    ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up',
-    a: 'left', d: 'right', w: 'up', ' ': 'up'
-  };
-
-  window.addEventListener('keydown', (e) => {
-    const k = keymap[e.key];
-    if (!k || input[k]) return;
-    input[k] = true;
-    socket.emit('input', input);
-  });
-
-  window.addEventListener('keyup', (e) => {
-    const k = keymap[e.key];
-    if (!k) return;
-    input[k] = false;
-    socket.emit('input', input);
-  });
-
-  // --- Chat ---
-  chatForm?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const text = chatInput.value.trim();
-    if (!text) return;
-    socket.emit('chat message', text);
-    chatInput.value = '';
-  });
-
-  socket.on('chat history', (history) => {
-    if (!messages) return;
-    messages.innerHTML = '';
-    (history || []).forEach(addMessage);
-  });
-
-  socket.on('chat message', addMessage);
-
-  function addMessage(msg) {
-    if (!messages || !msg) return;
-    const li = document.createElement('li');
-    const time = document.createElement('span');
-    time.className = 'time';
-    time.textContent = new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    li.textContent = `${msg.user}: ${msg.text}`;
-    li.appendChild(time);
-    if (msg.user === myUsername) li.classList.add('self');
-    messages.appendChild(li);
-    messages.scrollTop = messages.scrollHeight;
-  }
-
-  // --- Player List ---
-  function updatePlayerList() {
-    if (!playerList || !players) return;
-    playerList.innerHTML = '';
-    Object.keys(players).forEach(u => {
-      const li = document.createElement('li');
-      const dot = document.createElement('div');
-      dot.className = 'dot';
-      dot.style.background = players[u].color || '#3b82f6';
-      li.appendChild(dot);
-      li.appendChild(document.createTextNode(u));
-      playerList.appendChild(li);
+    socket.on('world',({world:w,players:p})=>{
+      world=w; players=p||{}; updatePlayerList();
     });
-    if (countLabel) countLabel.textContent = `Players: ${Object.keys(players).length}`;
-  }
+    socket.on('player join',({username,state})=>{
+      players[username]=state; updatePlayerList();
+    });
+    socket.on('player leave',({username})=>{
+      delete players[username]; updatePlayerList();
+    });
+    socket.on('state',(serverPlayers)=>{
+      players=serverPlayers||players; updatePlayerList();
+    });
 
-  // --- Drawing ---
-  const materialColors = { normal:"#888", ice:"#3b82f6", lava:"#ef4444", bounce:"#facc15", sticky:"#10b981" };
+    const input={left:false,right:false,up:false};
+    const keymap={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',a:'left',d:'right',w:'up',' ':'up'};
+    window.addEventListener('keydown',(e)=>{const k=keymap[e.key];if(!k||input[k])return;input[k]=true;socket.emit('input',input);});
+    window.addEventListener('keyup',(e)=>{const k=keymap[e.key];if(!k)return;input[k]=false;socket.emit('input',input);});
 
-  function drawPlatform(plat) {
-    ctx.save();
-    ctx.translate(plat.x + plat.w/2, plat.y + plat.h/2);
-    ctx.rotate((plat.rotation || 0) * Math.PI/180);
-    ctx.fillStyle = materialColors[plat.material] || "#888";
-    ctx.fillRect(-plat.w/2, -plat.h/2, plat.w, plat.h);
-    ctx.restore();
-  }
-
-  function drawPlayer(u, p) {
-    const rot = Number.isFinite(p.currentRotation) ? p.currentRotation : 0;
-    const dir = (p.dir === 1 || p.dir === -1) ? p.dir : 1;
-
-    ctx.save();
-    ctx.translate(p.x + SIZE.w/2, p.y + SIZE.h/2);
-    ctx.rotate(rot * Math.PI / 180);
-
-    ctx.fillStyle = p.color || '#a3e635';
-    ctx.fillRect(-SIZE.w/2, -SIZE.h/2, SIZE.w, SIZE.h);
-
-    ctx.fillStyle = '#000';
-    const eyeOffsetX = dir === 1 ? SIZE.w/2 - 12 : -SIZE.w/2 + 4;
-    ctx.fillRect(eyeOffsetX, -SIZE.h/2 + 16, 8, 8);
-
-    ctx.fillStyle = '#e5e7eb';
-    ctx.font = '12px Segoe UI';
-    ctx.fillText(u, -SIZE.w/2, -SIZE.h/2 - 6);
-
-    ctx.restore();
-  }
-
-  // =========================
-  // COLLISION + PHYSICS SECTION (BOTTOM)
-  // =========================
-
-  // --- Math helpers ---
-  function dot(a,b){return a.x*b.x+a.y*b.y;}
-  function sub(a,b){return {x:a.x-b.x,y:a.y-b.y};}
-  function normalize(v){const l=Math.hypot(v.x,v.y);return l?{x:v.x/l,y:v.y/l}:{x:0,y:0};}
-
-  // --- Geometry ---
-  function getAABBCorners(x,y,w,h){
-    return [{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}];
-  }
-  function getRotRectCorners(p){
-  const cx = p.x + p.w/2;
-  const cy = p.y + p.h/2;
-  const rad = (p.rotation || 0) * Math.PI/180;
-  const local = [
-    { x: -p.w/2, y: -p.h/2 },
-    { x:  p.w/2, y: -p.h/2 },
-    { x:  p.w/2, y:  p.h/2 },
-    { x: -p.w/2, y:  p.h/2 }
-  ];
-  return local.map(v => ({
-    x: cx + v.x * Math.cos(rad) - v.y * Math.sin(rad),
-    y: cy + v.x * Math.sin(rad) + v.y * Math.cos(rad)
-  }));
-}
-  function project(corners,axis){
-    let min=Infinity,max=-Infinity;
-    for(const c of corners){const s=dot(c,axis);if(s<min)min=s;if(s>max)max=s;}
-    return {min,max};
-  }
-  function overlapAmount(a,b){return Math.min(a.max,b.max)-Math.max(a.min,b.min);}
-
-  // --- SAT for AABB vs rotated rect (edge normals) ---
-  function satAabbVsRotRect(player,plat){
-    const a=getAABBCorners(player.x,player.y,SIZE.w,SIZE.h);
-    const b=getRotRectCorners(plat);
-
-    const edge0=sub(b[1],b[0]); // top edge direction
-    const edge1=sub(b[3],b[0]); // left edge direction
-    const axes=[
-      {x:1,y:0},{x:0,y:1},                       // AABB axes
-      normalize({x:-edge0.y,y:edge0.x}),         // normal to edge0
-      normalize({x:-edge1.y,y:edge1.x})          // normal to edge1
-    ];
-
-    let minOverlap=Infinity, smallestAxis=null;
-
-    for(const axis of axes){
-      const pa=project(a,axis), pb=project(b,axis);
-      const overlap=overlapAmount(pa,pb);
-      if(overlap<=0) return null; // separated
-      if(overlap<minOverlap){minOverlap=overlap;smallestAxis=axis;}
+    chatForm.addEventListener('submit',(e)=>{
+      e.preventDefault();
+      const text=chatInput.value.trim();
+      if(!text)return;
+      socket.emit('chat message',text);
+      chatInput.value='';
+    });
+    socket.on('chat history',(history)=>{messages.innerHTML='';history.forEach(addMessage);});
+    socket.on('chat message',addMessage);
+    function addMessage(msg){
+      const li=document.createElement('li');
+      const time=document.createElement('span');
+      time.className='time';
+      time.textContent=new Date(msg.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      li.textContent=`${msg.user}: ${msg.text}`;
+      li.appendChild(time);
+      if(msg.user===myUsername) li.classList.add('self');
+      messages.appendChild(li);
+      messages.scrollTop=messages.scrollHeight;
+    }
+    function updatePlayerList(){
+      playerList.innerHTML='';
+      Object.keys(players).forEach(u=>{
+        const li=document.createElement('li');
+        const dot=document.createElement('div');
+        dot.className='dot';
+        dot.style.background=players[u].color||'#3b82f6';
+        li.appendChild(dot);
+        li.appendChild(document.createTextNode(u));
+        playerList.appendChild(li);
+      });
+      countLabel.textContent=`Players: ${Object.keys(players).length}`;
     }
 
-    // MTV direction: from platform center to player center
-    const centerDelta={
-      x:(player.x+SIZE.w/2)-(plat.x+plat.w/2),
-      y:(player.y+SIZE.h/2)-(plat.y+plat.h/2)
-    };
-    if(dot(centerDelta,smallestAxis)<0) smallestAxis={x:-smallestAxis.x,y:-smallestAxis.y};
-
-    return {axis:smallestAxis,depth:minOverlap,rotation:plat.rotation||0};
-  }
-
-  // --- Resolve collisions with stability iterations ---
-  function resolvePlayer(player,platforms){
-    if(!platforms || !Array.isArray(platforms) || platforms.length===0) {
-      if(player.currentRotation === undefined || !Number.isFinite(player.currentRotation)) player.currentRotation = 0;
-      player.currentRotation += (0 - player.currentRotation) * 0.2;
-      return;
+    const materialColors={normal:"#888",ice:"#3b82f6",lava:"#ef4444",bounce:"#facc15",sticky:"#10b981"};
+    function drawPlatform(plat){
+      ctx.save();
+      ctx.translate(plat.x+plat.w/2,plat.y+plat.h/2);
+      ctx.rotate((plat.rotation||0)*Math.PI/180);
+      ctx.fillStyle=materialColors[plat.material]||"#888";
+      ctx.fillRect(-plat.w/2,-plat.h/2,plat.w,plat.h);
+      ctx.restore();
+    }
+    function drawPlayer(u,p){
+      const rot=Number.isFinite(p.currentRotation)?p.currentRotation:0;
+      const dir=(p.dir===1||p.dir===-1)?p.dir:1;
+      ctx.save();
+      ctx.translate(p.x+SIZE.w/2,p.y+SIZE.h/2);
+      ctx.rotate(rot*Math.PI/180);
+      ctx.fillStyle=p.color||'#a3e635';
+      ctx.fillRect(-SIZE.w/2,-SIZE.h/2,SIZE.w,SIZE.h);
+      ctx.fillStyle='#000';
+      const eyeOffsetX=dir===1?SIZE.w/2-12:-SIZE.w/2+4;
+      ctx.fillRect(eyeOffsetX,-SIZE.h/2+16,8,8);
+      ctx.fillStyle='#e5e7eb';
+      ctx.font='12px Segoe UI';
+      ctx.fillText(u,-SIZE.w/2,-SIZE.h/2-6);
+      ctx.restore();
     }
 
-    let grounded=false, groundRot=0;
+    // SAT helpers
+    function dot(a,b){return a.x*b.x+a.y*b.y;}
+    function sub(a,b){return {x:a.x-b.x,y:a.y-b.y};}
+    function normalize(v){const l=Math.hypot(v.x,v.y);return l?{x:v.x/l,y:v.y/l}:{x:0,y:0};}
+    function getAABBCorners(x,y,w,h){return [{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}];}
+    function getRotRectCorners(p){
+            const cx = p.x + p.w/2, cy = p.y + p.h/2, rad = (p.rotation||0)*Math.PI/180;
+      const local = [
+        {x:-p.w/2,y:-p.h/2},
+        {x: p.w/2,y:-p.h/2},
+        {x: p.w/2,y: p.h/2},
+        {x:-p.w/2,y: p.h/2}
+      ];
+      return local.map(v => ({
+        x: cx + v.x*Math.cos(rad) - v.y*Math.sin(rad),
+        y: cy + v.x*Math.sin(rad) + v.y*Math.cos(rad)
+      }));
+    }
 
-    for(let iter=0; iter<3; iter++){
-      let any=false;
-      for(const plat of platforms){
-        const res=satAabbVsRotRect(player,plat);
-        if(res){
-          player.x+=res.axis.x*res.depth;
-          player.y+=res.axis.y*res.depth;
-          any=true;
-          if(dot(res.axis,{x:0,y:-1})>0.5){grounded=true;groundRot=res.rotation;}
+    function project(corners,axis){
+      let min=Infinity,max=-Infinity;
+      for(const c of corners){
+        const s=dot(c,axis);
+        if(s<min)min=s;
+        if(s>max)max=s;
+      }
+      return {min,max};
+    }
+
+    function overlapAmount(a,b){return Math.min(a.max,b.max)-Math.max(a.min,b.min);}
+
+    function satAabbVsRotRect(player,plat){
+      const a=getAABBCorners(player.x,player.y,SIZE.w,SIZE.h);
+      const b=getRotRectCorners(plat);
+      const edge0=sub(b[1],b[0]), edge1=sub(b[3],b[0]);
+      const axes=[{x:1,y:0},{x:0,y:1},normalize({x:-edge0.y,y:edge0.x}),normalize({x:-edge1.y,y:edge1.x})];
+      let minOverlap=Infinity, smallestAxis=null;
+      for(const axis of axes){
+        const pa=project(a,axis), pb=project(b,axis);
+        const overlap=overlapAmount(pa,pb);
+        if(overlap<=0) return null;
+        if(overlap<minOverlap){minOverlap=overlap;smallestAxis=axis;}
+      }
+      const centerDelta={x:(player.x+SIZE.w/2)-(plat.x+plat.w/2),y:(player.y+SIZE.h/2)-(plat.y+plat.h/2)};
+      if(dot(centerDelta,smallestAxis)<0) smallestAxis={x:-smallestAxis.x,y:-smallestAxis.y};
+      return {axis:smallestAxis,depth:minOverlap,rotation:plat.rotation||0};
+    }
+
+    function resolvePlayer(player,platforms){
+      if(!platforms||!Array.isArray(platforms)||platforms.length===0){
+        if(player.currentRotation===undefined||!Number.isFinite(player.currentRotation)) player.currentRotation=0;
+        player.currentRotation += (0 - player.currentRotation)*0.2;
+        return;
+      }
+      let grounded=false, groundRot=0;
+      for(let iter=0;iter<3;iter++){
+        let any=false;
+        for(const plat of platforms){
+          const res=satAabbVsRotRect(player,plat);
+          if(res){
+            player.x+=res.axis.x*res.depth;
+            player.y+=res.axis.y*res.depth;
+            any=true;
+            if(dot(res.axis,{x:0,y:-1})>0.5){grounded=true;groundRot=res.rotation;}
+          }
+        }
+        if(!any) break;
+      }
+      const target=grounded?groundRot:0;
+      if(player.currentRotation===undefined||!Number.isFinite(player.currentRotation)) player.currentRotation=0;
+      const delta=target-player.currentRotation;
+      const lerp=0.2;
+      player.currentRotation=Math.abs(delta)<0.3?target:(player.currentRotation+delta*lerp);
+    }
+
+    // --- Render Loop ---
+    function render(){
+      if(!world) return requestAnimationFrame(render);
+      if(world?.platforms){
+        for(const p of Object.values(players)){
+          resolvePlayer(p,world.platforms);
         }
       }
-      if(!any) break;
-    }
-
-    const target = grounded ? groundRot : 0;
-    if(player.currentRotation === undefined || !Number.isFinite(player.currentRotation)) player.currentRotation = 0;
-    const delta = target - player.currentRotation;
-    const lerp = 0.2;
-    player.currentRotation = Math.abs(delta) < 0.3 ? target : (player.currentRotation + delta * lerp);
-  }
-
-  // --- Render Loop ---
-  function render(){
-    if(!world) return requestAnimationFrame(render);
-
-    if(world?.platforms){
-      for(const p of Object.values(players)){
-        resolvePlayer(p, world.platforms);
+      const me=players[myUsername];
+      const camX=Math.max(0,Math.min(((me&&me.x)?me.x:0)-canvas.width/2,world.width-canvas.width));
+      const camY=Math.max(0,Math.min(((me&&me.y)?me.y:0)-canvas.height/2,world.height-canvas.height));
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.save();
+      ctx.translate(-camX,-camY);
+      ctx.fillStyle='#222';
+      ctx.fillRect(0,0,world.width,world.height);
+      if(Array.isArray(world.platforms)){
+        for(const plat of world.platforms) drawPlatform(plat);
       }
+      for(const [u,p] of Object.entries(players)) drawPlayer(u,p);
+      ctx.restore();
+      requestAnimationFrame(render);
     }
 
-    const me = players[myUsername];
-    const camX = Math.max(0, Math.min(((me && me.x) ? me.x : 0) - canvas.width/2, world.width - canvas.width));
-    const camY = Math.max(0, Math.min(((me && me.y) ? me.y : 0) - canvas.height/2, world.height - canvas.height));
-
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.save();
-    ctx.translate(-camX,-camY);
-
-    // Background
-    ctx.fillStyle = '#222';
-    ctx.fillRect(0,0,world.width,world.height);
-
-    // Platforms
-    if (Array.isArray(world.platforms)) {
-      for(const plat of world.platforms) drawPlatform(plat);
-    }
-
-    // Players
-    for(const [u,p] of Object.entries(players)) drawPlayer(u,p);
-
-    ctx.restore();
     requestAnimationFrame(render);
-  }
-
-  // --- Start Render Loop ---
-  requestAnimationFrame(render);
-</script>
+  </script>
 </body>
 </html>
