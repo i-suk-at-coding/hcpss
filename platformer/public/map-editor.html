@@ -207,50 +207,6 @@
   copyBtn.addEventListener('click', () => { output.select(); document.execCommand('copy'); alert('JSON copied!'); });
   spawnBtn.addEventListener('click', () => { settingSpawn = true; });
 
-  // Mouse events
-  canvas.addEventListener('mousedown', e => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left + cameraX;
-    const my = e.clientY - rect.top + cameraY;
-
-    // Curve creation
-    if (addingCurve) {
-      curvePoints.push({x:mx, y:my});
-      return;
-    }
-
-    // Curve point dragging
-    if (selectedIndices.length === 1) {
-      const p = world.platforms[selectedIndices[0]];
-      if (p.type === "curve") {
-        const foundHandle = p.points.findIndex(pt => Math.hypot(mx-pt.x,my-pt.y) < 8);
-        if (foundHandle !== -1) {
-          draggingPlatform = true;
-          activeHandle = foundHandle;
-          startMouse = {mx,my};
-          startPlatform = JSON.parse(JSON.stringify(p));
-          return;
-        }
-      }
-    }
-
-    // Normal selection
-    const found=world.platforms.findIndex(p=>p.type==="rect" && mx>=p.x&&mx<=p.x+p.w&&my>=p.y&&my<=p.y+p.h);
-    if(found===-1){
-      selectingBox=true;
-      selectStartX=mx; selectStartY=my;
-      selectCurrentX=mx; selectCurrentY=my;
-      selectedIndices=[];
-    } else {
-      if(!selectedIndices.includes(found)) selectedIndices=[found];
-      dragOffsets={};
-      selectedIndices.forEach(i=>{
-        const p=world.platforms[i];
-        dragOffsets[i]={dx:mx-p.x,dy:my-p.y};
-      });
-      draggingPlatform=true;
-    }
-  });
 
 // --- Bezier Curve Button ---
 const curveBtn = document.createElement('button');
@@ -276,7 +232,6 @@ function bezierToPolygon(p0, p1, p2, steps=20) {
   return pts;
 }
 
-// --- Mouse events ---
 canvas.addEventListener('mousedown', e => {
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left + cameraX;
@@ -288,7 +243,7 @@ canvas.addEventListener('mousedown', e => {
 
     if (curvePoints.length === 3) {
       const [p0, p1, p2] = curvePoints;
-      const curve = bezierToPolygon(p0, p1, p2, 20); // 20 segments
+      const curve = bezierToPolygon(p0, p1, p2, 20);
       world.platforms.push({
         type: "curve",
         material: materialSelect.value,
@@ -298,55 +253,43 @@ canvas.addEventListener('mousedown', e => {
       addingCurve = false;
       curvePoints = [];
       redraw();
+      return; // exit only after curve is complete
     }
-    return;
+    // don’t return here if only 1–2 points clicked
   }
 
-  // Rectangle dragging
-  if (draggingPlatform) {
+  // Curve point dragging
+  if (selectedIndices.length === 1) {
+    const p = world.platforms[selectedIndices[0]];
+    if (p.type === "curve") {
+      const foundHandle = p.points.findIndex(pt => Math.hypot(mx-pt.x,my-pt.y) < 8);
+      if (foundHandle !== -1) {
+        draggingPlatform = true;
+        activeHandle = foundHandle;
+        startMouse = {mx,my};
+        startPlatform = JSON.parse(JSON.stringify(p));
+        return;
+      }
+    }
+  }
+
+  // Normal selection (rectangles)
+  const found = world.platforms.findIndex(p =>
+    p.type==="rect" && mx>=p.x && mx<=p.x+p.w && my>=p.y && my<=p.y+p.h
+  );
+  if (found === -1) {
+    selectingBox = true;
+    selectStartX = mx; selectStartY = my;
+    selectCurrentX = mx; selectCurrentY = my;
+    selectedIndices = [];
+  } else {
+    if (!selectedIndices.includes(found)) selectedIndices = [found];
+    dragOffsets = {};
     selectedIndices.forEach(i => {
-      const plat = world.platforms[i];
-      plat.x = mx - dragOffsets[i].dx;
-      plat.y = my - dragOffsets[i].dy;
+      const p = world.platforms[i];
+      dragOffsets[i] = {dx: mx - p.x, dy: my - p.y};
     });
-  }
-
-  // Rotation
-  if (rotatingPlatform && selectedIndices.length === 1) {
-    const p = world.platforms[selectedIndices[0]];
-    const cx = p.x + p.w/2, cy = p.y + p.h/2;
-    const angle = Math.atan2(my - cy, mx - cx) * 180 / Math.PI;
-    p.rotation = angle;
-    return;
-  }
-
-  // Scaling
-  if (scalingPlatform && selectedIndices.length === 1) {
-    const p = world.platforms[selectedIndices[0]];
-    const dx = mx - startMouse.mx, dy = my - startMouse.my;
-    switch (activeHandle) {
-      case 0:
-        p.x = startPlatform.x + dx;
-        p.y = startPlatform.y + dy;
-        p.w = startPlatform.w - dx;
-        p.h = startPlatform.h - dy;
-        break;
-      case 1:
-        p.y = startPlatform.y + dy;
-        p.w = startPlatform.w + dx;
-        p.h = startPlatform.h - dy;
-        break;
-      case 2:
-        p.x = startPlatform.x + dx;
-        p.w = startPlatform.w - dx;
-        p.h = startPlatform.h + dy;
-        break;
-      case 3:
-        p.w = startPlatform.w + dx;
-        p.h = startPlatform.h + dy;
-        break;
-    }
-    return;
+    draggingPlatform = true;
   }
 });
 
