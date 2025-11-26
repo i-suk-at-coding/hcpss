@@ -246,7 +246,11 @@
             player.x+=res.axis.x*res.depth;
             player.y+=res.axis.y*res.depth;
             any=true;
-            if(dot(res.axis,{x:0,y:-1})>0.5){grounded=true;groundRot=res.rotation;}
+            if(dot(res.axis,{x:0,y:-1})>0.5){
+              grounded = true;
+              groundRot = Math.atan2(res.axis.y, res.axis.x) * 180 / Math.PI + 90;
+            }
+
           }
         }
         if(!any) break;
