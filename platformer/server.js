@@ -16,11 +16,20 @@ const WORLD = {
   width: 5000,
   height: 2000,
   platforms: [
-    {"x":45,"y":151,"w":200,"h":20,"rotation":-152.3116461088466,"material":"ice","rotationHandle":{"x":145,"y":111}},
-    {"x":188,"y":211,"w":200,"h":20,"rotation":-165.96375653207352,"material":"ice","rotationHandle":{"x":288,"y":171}},
-    {"x":364,"y":239,"w":200,"h":20,"rotation":-177.54596832547296,"material":"ice","rotationHandle":{"x":464,"y":199}},
-    {"x":543,"y":244,"w":200,"h":20,"rotation":0,"material":"ice","rotationHandle":{"x":643,"y":204}},
-    {"x":696,"y":245,"w":896,"h":19,"rotation":0,"material":"ice","rotationHandle":{"x":1144,"y":205}}
+    {
+    "type": "curve",
+    "material": "ice",
+    "points": [
+      {"x":100,"y":300},
+      {"x":130,"y":280},
+      {"x":160,"y":270},
+      {"x":190,"y":275},
+      {"x":220,"y":290},
+      {"x":250,"y":310},
+      {"x":280,"y":340},
+      {"x":310,"y":370}
+    ]
+  }
   ],
   spawn: {"x":100,"y":100}
 };
