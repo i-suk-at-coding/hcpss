@@ -170,7 +170,7 @@ function stepPlayer(p, dt) {
         grounded=true;
         p.vy=0;
         switch(plat.material){
-          case "ice": p.vx*=1.25; break;
+          case "ice": p.vx*=1.1; break;
           case "lava": respawnPlayer(p); break;
           case "bounce": p.vy=-800; break;
           case "sticky": p.vx*=0.5; break;
