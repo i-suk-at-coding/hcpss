@@ -53,7 +53,7 @@
 <script>
   // --- Toolbar Help ---
   document.getElementById('helpBtn').addEventListener('click', () => {
-    alert("Controls:\n- Arrow keys/WASD: Move camera\n- Click+Drag: Move block\n- Drag box: Select multiple\n- Corner handles: Scale block\n- Rotation handle above block: Rotate\n- Toolbar buttons: Add/Delete/Save/Copy/Load\n- Set Spawn: Click to place spawn point");
+    alert("Controls:\n- Arrow keys/WASD: Move camera\n- Click+Drag: Move block\n- Drag box: Select multiple\n- Corner handles: Scale block\n- Rotation handle above block: Rotate\n- Toolbar buttons: Add/Delete/Save/Copy/Load\n- Set Spawn: Click to place spawn point\n- Add Curve: Click points, press Enter to finalize\n- Drag curve handles: reshape curve");
   });
 
   // --- Canvas ---
@@ -65,16 +65,26 @@
   const deleteBtn = document.getElementById('deleteBtn');
   const saveBtn = document.getElementById('saveBtn');
   const copyBtn = document.getElementById('copyBtn');
-  const loadFile = document.getElementById('loadFile');
-  const loadTextBtn = document.getElementById('loadTextBtn');
   const materialSelect = document.getElementById('materialSelect');
-  const jsonInput = document.getElementById('jsonInput');
   const output = document.getElementById('editorOutput');
 
   // --- Add Spawn Button ---
   const spawnBtn = document.createElement('button');
   spawnBtn.textContent = "Set Spawn";
   document.getElementById('toolbar').appendChild(spawnBtn);
+
+  // --- Add Curve Button ---
+  const curveBtn = document.createElement('button');
+  curveBtn.textContent = "Add Curve";
+  document.getElementById('toolbar').appendChild(curveBtn);
+
+  let addingCurve = false;
+  let curvePoints = [];
+
+  curveBtn.addEventListener('click', () => {
+    addingCurve = true;
+    curvePoints = [];
+  });
 
   // --- World State ---
   const worldWidth = 4000, worldHeight = 2000;
@@ -122,31 +132,49 @@
 
     // Platforms
     world.platforms.forEach((p, i) => {
-      ctx.save();
-      ctx.translate(p.x - cameraX + p.w/2, p.y - cameraY + p.h/2);
-      ctx.rotate((p.rotation||0) * Math.PI/180);
       ctx.fillStyle =
         p.material==='ice' ? '#3b82f6' :
         p.material==='lava' ? '#ef4444' :
         p.material==='bounce' ? '#facc15' :
         p.material==='sticky' ? '#10b981' : '#888';
-      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-      ctx.restore();
 
-      if (selectedIndices.includes(i)) {
-        ctx.strokeStyle = '#fff';
-        ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
-
-        ctx.fillStyle = '#fff';
-        getHandles(p).forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
-
-        const cx = p.x + p.w/2;
-        const hy = p.y - 40;
-        ctx.fillStyle = '#0ff';
+      if (p.type === "curve" && Array.isArray(p.points)) {
         ctx.beginPath();
-        ctx.arc(cx - cameraX, hy - cameraY, 6, 0, Math.PI*2);
+        ctx.moveTo(p.points[0].x - cameraX, p.points[0].y - cameraY);
+        for (let j=1; j<p.points.length; j++) {
+          ctx.lineTo(p.points[j].x - cameraX, p.points[j].y - cameraY);
+        }
+        ctx.closePath();
         ctx.fill();
-        p.rotationHandle = { x: cx, y: hy };
+
+        if (selectedIndices.includes(i)) {
+          ctx.fillStyle = '#fff';
+          p.points.forEach(pt => {
+            ctx.fillRect(pt.x - cameraX - 4, pt.y - cameraY - 4, 8, 8);
+          });
+        }
+      } else {
+        ctx.save();
+        ctx.translate(p.x - cameraX + p.w/2, p.y - cameraY + p.h/2);
+        ctx.rotate((p.rotation||0) * Math.PI/180);
+        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+        ctx.restore();
+
+        if (selectedIndices.includes(i)) {
+          ctx.strokeStyle = '#fff';
+          ctx.strokeRect(p.x - cameraX, p.y - cameraY, p.w, p.h);
+
+          ctx.fillStyle = '#fff';
+          getHandles(p).forEach(h => ctx.fillRect(h.x - cameraX - 4, h.y - cameraY - 4, 8, 8));
+
+          const cx = p.x + p.w/2;
+          const hy = p.y - 40;
+          ctx.fillStyle = '#0ff';
+          ctx.beginPath();
+          ctx.arc(cx - cameraX, hy - cameraY, 6, 0, Math.PI*2);
+          ctx.fill();
+          p.rotationHandle = { x: cx, y: hy };
+        }
       }
     });
 
@@ -161,12 +189,12 @@
     }
 
     // JSON output
-    output.value = JSON.stringify(world);
+    output.value = JSON.stringify(world,null,2);
   }
 
   // --- Toolbar Actions ---
   addBtn.addEventListener('click', () => {
-    world.platforms.push({ x: cameraX+100, y: cameraY+100, w:200, h:20, rotation:0, material:materialSelect.value });
+    world.platforms.push({ type:"rect", x: cameraX+100, y: cameraY+100, w:200, h:20, rotation:0, material:materialSelect.value });
     selectedIndices = [world.platforms.length-1];
     redraw();
   });
@@ -185,30 +213,29 @@
     const mx = e.clientX - rect.left + cameraX;
     const my = e.clientY - rect.top + cameraY;
 
-    // Rotation handle
-    if (selectedIndices.length===1) {
+    // Curve creation
+    if (addingCurve) {
+      curvePoints.push({x:mx, y:my});
+      return;
+    }
+
+    // Curve point dragging
+    if (selectedIndices.length === 1) {
       const p = world.platforms[selectedIndices[0]];
-      const rh = p.rotationHandle;
-      if (rh && Math.hypot(mx-rh.x,my-rh.y)<10) {
-        rotatingPlatform=true;
-        startMouse={mx,my};
-        startRotation=p.rotation;
-        return;
-      }
-      // Corner handles for scaling
-      const handles=getHandles(p);
-      const foundHandle=handles.findIndex(h=>Math.hypot(mx-h.x,my-h.y)<8);
-      if(foundHandle!==-1){
-        scalingPlatform=true;
-        activeHandle=foundHandle;
-        startMouse={mx,my};
-        startPlatform={...p};
-        return;
+      if (p.type === "curve") {
+        const foundHandle = p.points.findIndex(pt => Math.hypot(mx-pt.x,my-pt.y) < 8);
+        if (foundHandle !== -1) {
+          draggingPlatform = true;
+          activeHandle = foundHandle;
+          startMouse = {mx,my};
+          startPlatform = JSON.parse(JSON.stringify(p));
+          return;
+        }
       }
     }
 
     // Normal selection
-    const found=world.platforms.findIndex(p=>mx>=p.x&&mx<=p.x+p.w&&my>=p.y&&my<=p.y+p.h);
+    const found=world.platforms.findIndex(p=>p.type==="rect" && mx>=p.x&&mx<=p.x+p.w&&my>=p.y&&my<=p.y+p.h);
     if(found===-1){
       selectingBox=true;
       selectStartX=mx; selectStartY=my;
@@ -230,6 +257,23 @@
     const mx=e.clientX-rect.left+cameraX;
     const my=e.clientY-rect.top+cameraY;
 
+    if(draggingPlatform && selectedIndices.length===1){
+      const p=world.platforms[selectedIndices[0]];
+      if(p.type==="curve" && activeHandle!==null){
+        const dx=mx-startMouse.mx;
+        const dy=my-startMouse.my;
+        p.points[activeHandle].x=startPlatform.points[activeHandle].x+dx;
+        p.points[activeHandle].y=startPlatform.points[activeHandle].y+dy;
+        return;
+      }
+      if (draggingPlatform) {
+  selectedIndices.forEach(i => {
+    const plat = world.platforms[i];
+    plat.x = mx - dragOffsets[i].dx;
+    plat.y = my - dragOffsets[i].dy;
+  });
+    }
+
     if(rotatingPlatform && selectedIndices.length===1){
       const p=world.platforms[selectedIndices[0]];
       const cx=p.x+p.w/2, cy=p.y+p.h/2;
@@ -249,14 +293,6 @@
       }
       return;
     }
-
-    if(draggingPlatform){
-      selectedIndices.forEach(i=>{
-        const p=world.platforms[i];
-        p.x=mx-dragOffsets[i].dx;
-        p.y=my-dragOffsets[i].dy;
-      });
-    }
   });
 
   canvas.addEventListener('mouseup', () => {
@@ -264,7 +300,7 @@
     scalingPlatform=false;
     draggingPlatform=false;
     selectingBox=false;
-    scalingGroup=false;
+    activeHandle=null;
   });
 
   // --- Camera ---
@@ -274,6 +310,14 @@
     if(e.key==='ArrowRight'||e.key==='d') cameraX=Math.min(worldWidth-canvas.width,cameraX+step);
     if(e.key==='ArrowUp'||e.key==='w') cameraY=Math.max(0,cameraY-step);
     if(e.key==='ArrowDown'||e.key==='s') cameraY=Math.min(worldHeight-canvas.height,cameraY+step);
+
+    // Finalize curve with Enter
+    if(addingCurve && e.key==='Enter' && curvePoints.length>=3){
+      world.platforms.push({ type:"curve", material:materialSelect.value, points:curvePoints });
+      addingCurve=false;
+      selectedIndices=[world.platforms.length-1];
+      curvePoints=[];
+    }
   });
 
   // --- Loop ---
