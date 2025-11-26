@@ -168,6 +168,7 @@ function satAabbVsPolygon(player, polygonPoints, w, h) {
 
 
 // Physics step
+// Physics step
 function stepPlayer(p, dt) {
   const ACCEL=1500, FRICTION=1200, MAX_SPEED=300, JUMP_VELOCITY=-600, COYOTE_TIME=0.1, JUMP_BUFFER=0.15;
   const w=40,h=60;
@@ -200,23 +201,26 @@ function stepPlayer(p, dt) {
   // Collisions with SAT
   let grounded=false;
   for(const plat of WORLD.platforms){
-  // If it's a rect, get corners; if it's a curve, use its polygon points
-  const points = plat.type === "curve" ? plat.points : getRotRectCorners(plat);
-  const res = satAabbVsPolygon(p, points, w, h);
-  if(res){
-    p.x += res.axis.x * res.depth;
-    p.y += res.axis.y * res.depth;
-    if(dot(res.axis,{x:0,y:-1})>0.5){
-      grounded=true;
-      p.vy=0;
-      switch(plat.material){
-        case "ice": p.vx*=2; break;
-        case "lava": respawnPlayer(p); break;
-        case "bounce": p.vy=-800; break;
-        case "sticky": p.vx*=0.5; break;
+    // If it's a rect, get corners; if it's a curve, use its polygon points
+    const points = plat.type === "curve" ? plat.points : getRotRectCorners(plat);
+    const res = satAabbVsPolygon(p, points, w, h);
+    if(res){
+      p.x += res.axis.x * res.depth;
+      p.y += res.axis.y * res.depth;
+      if(dot(res.axis,{x:0,y:-1})>0.5){
+        grounded=true;
+        p.vy=0;
+        switch(plat.material){
+          case "ice": p.vx*=2; break;
+          case "lava": respawnPlayer(p); break;
+          case "bounce": p.vy=-800; break;
+          case "sticky": p.vx*=0.5; break;
+        }
       }
     }
-  }
+  } // ✅ closing brace for the for-loop
+
+  p.onGround = grounded;
 }
 
 function respawnPlayer(p){p.x=100;p.y=500;p.vx=0;p.vy=0;p.onGround=false;p.coyoteTimer=0;p.jumpBuffer=0;p.dir=1;}
