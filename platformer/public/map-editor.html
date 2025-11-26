@@ -282,18 +282,35 @@
       return;
     }
 
-    if(scalingPlatform && selectedIndices.length===1){
-      const p=world.platforms[selectedIndices[0]];
-      const dx=mx-startMouse.mx, dy=my-startMouse.my;
-      switch(activeHandle){
-        case 0: p.x=startPlatform.x+dx; p.y=startPlatform.y+dy; p.w=startPlatform.w-dx; p.h=startPlatform.h-dy; break;
-        case 1: p.y=startPlatform.y+dy; p.w=startPlatform.w+dx; p.h=startPlatform.h-dy; break;
-        case 2: p.x=startPlatform.x+dx; p.w=startPlatform.w-dx; p.h=startPlatform.h+dy; break;
-        case 3: p.w=startPlatform.w+dx; p.h=startPlatform.h+dy; break;
-      }
-      return;
+  if (scalingPlatform && selectedIndices.length === 1) {
+    const p = world.platforms[selectedIndices[0]];
+    const dx = mx - startMouse.mx, dy = my - startMouse.my;
+    switch (activeHandle) {
+      case 0:
+        p.x = startPlatform.x + dx;
+        p.y = startPlatform.y + dy;
+        p.w = startPlatform.w - dx;
+        p.h = startPlatform.h - dy;
+        break;
+      case 1:
+        p.y = startPlatform.y + dy;
+        p.w = startPlatform.w + dx;
+        p.h = startPlatform.h - dy;
+        break;
+      case 2:
+        p.x = startPlatform.x + dx;
+        p.w = startPlatform.w - dx;
+        p.h = startPlatform.h + dy;
+        break;
+      case 3:
+        p.w = startPlatform.w + dx;
+        p.h = startPlatform.h + dy;
+        break;
     }
-  });
+    return;
+  }
+});
+
 
   canvas.addEventListener('mouseup', () => {
     rotatingPlatform=false;
