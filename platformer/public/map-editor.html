@@ -57,6 +57,15 @@
 
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
+  function resizeCanvas() {
+    const right = document.getElementById('right');
+    const hud = document.getElementById('hud');
+    canvas.width = window.innerWidth - (right ? right.offsetWidth : 0);
+    canvas.height = window.innerHeight - (hud ? hud.offsetHeight : 0);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
 
   const addBtn = document.getElementById('addBtn');
   const deleteBtn = document.getElementById('deleteBtn');
