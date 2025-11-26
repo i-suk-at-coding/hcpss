@@ -51,22 +51,16 @@
     <button id="loadTextBtn">Load from Text</button>
   </div>
 <script>
+  // --- Toolbar Help ---
   document.getElementById('helpBtn').addEventListener('click', () => {
-    alert("Controls:\n- Arrow keys/WASD: Move camera\n- Click+Drag: Move block\n- Drag box: Select multiple\n- Corner handles: Scale block\n- Rotation handle above block: Rotate\n- Toolbar buttons: Add/Delete/Save/Copy/Load");
+    alert("Controls:\n- Arrow keys/WASD: Move camera\n- Click+Drag: Move block\n- Drag box: Select multiple\n- Corner handles: Scale block\n- Rotation handle above block: Rotate\n- Toolbar buttons: Add/Delete/Save/Copy/Load\n- Set Spawn: Click to place spawn point");
   });
 
+  // --- Canvas ---
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
-  function resizeCanvas() {
-    const right = document.getElementById('right');
-    const hud = document.getElementById('hud');
-    canvas.width = window.innerWidth - (right ? right.offsetWidth : 0);
-    canvas.height = window.innerHeight - (hud ? hud.offsetHeight : 0);
-  }
-  window.addEventListener('resize', resizeCanvas);
-  resizeCanvas();
 
-
+  // --- UI Elements ---
   const addBtn = document.getElementById('addBtn');
   const deleteBtn = document.getElementById('deleteBtn');
   const saveBtn = document.getElementById('saveBtn');
@@ -77,12 +71,18 @@
   const jsonInput = document.getElementById('jsonInput');
   const output = document.getElementById('editorOutput');
 
+  // --- Add Spawn Button ---
+  const spawnBtn = document.createElement('button');
+  spawnBtn.textContent = "Set Spawn";
+  document.getElementById('toolbar').appendChild(spawnBtn);
+
+  // --- World State ---
   const worldWidth = 4000, worldHeight = 2000;
   let cameraX = 0, cameraY = 0;
-  let world = { platforms: [] };
+  let world = { platforms: [], spawn: { x: 100, y: 100 } };
   let selectedIndices = [];
 
-  // Dragging / transform state
+  // --- Interaction State ---
   let dragOffsets = {};
   let draggingPlatform = false;
   let rotatingPlatform = false;
@@ -91,16 +91,12 @@
   let startMouse = null;
   let startPlatform = null;
   let startRotation = 0;
-
-  // Group scaling state
-  let scalingGroup = false;
-  let startBounds, originalPlatforms;
-
-  // Selection box state
   let selectingBox = false;
   let selectStartX = 0, selectStartY = 0;
   let selectCurrentX = 0, selectCurrentY = 0;
+  let settingSpawn = false;
 
+  // --- Resize ---
   function resizeCanvas() {
     const jsonPanel = document.getElementById('jsonPanel');
     const panelWidth = jsonPanel ? jsonPanel.offsetWidth : 0;
@@ -109,6 +105,7 @@
   }
   window.addEventListener('resize', resizeCanvas);
 
+  // --- Helpers ---
   function getHandles(p) {
     return [
       { x: p.x, y: p.y },
@@ -118,19 +115,12 @@
     ];
   }
 
-  function getGroupBounds() {
-    const selected = selectedIndices.map(i => world.platforms[i]);
-    const minX = Math.min(...selected.map(p => p.x));
-    const minY = Math.min(...selected.map(p => p.y));
-    const maxX = Math.max(...selected.map(p => p.x + p.w));
-    const maxY = Math.max(...selected.map(p => p.y + p.h));
-    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
-  }
-
+  // --- Redraw ---
   function redraw() {
     ctx.fillStyle = '#222';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Platforms
     world.platforms.forEach((p, i) => {
       ctx.save();
       ctx.translate(p.x - cameraX + p.w/2, p.y - cameraY + p.h/2);
@@ -160,10 +150,21 @@
       }
     });
 
-    output.value = world.platforms.map(p => JSON.stringify(p)).join(',\n');
+    // Spawn point
+    if (world.spawn) {
+      ctx.fillStyle = '#0f0';
+      ctx.beginPath();
+      ctx.arc(world.spawn.x - cameraX, world.spawn.y - cameraY, 12, 0, Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.stroke();
+    }
+
+    // JSON output
+    output.value = JSON.stringify(world, null, 2);
   }
 
-  // Toolbar buttons
+  // --- Toolbar Actions ---
   addBtn.addEventListener('click', () => {
     world.platforms.push({ x: cameraX+100, y: cameraY+100, w:200, h:20, rotation:0, material:materialSelect.value });
     selectedIndices = [world.platforms.length-1];
@@ -174,8 +175,9 @@
     selectedIndices = [];
     redraw();
   });
-  saveBtn.addEventListener('click', () => { output.value = JSON.stringify(world.platforms,null,2); });
+  saveBtn.addEventListener('click', () => { output.value = JSON.stringify(world,null,2); });
   copyBtn.addEventListener('click', () => { output.select(); document.execCommand('copy'); alert('JSON copied!'); });
+  spawnBtn.addEventListener('click', () => { settingSpawn = true; });
 
   // Mouse events
   canvas.addEventListener('mousedown', e => {
@@ -265,7 +267,7 @@
     scalingGroup=false;
   });
 
-  // Camera scroll
+  // --- Camera ---
   document.addEventListener('keydown', e => {
     const step=50;
     if(e.key==='ArrowLeft'||e.key==='a') cameraX=Math.max(0,cameraX-step);
@@ -274,13 +276,12 @@
     if(e.key==='ArrowDown'||e.key==='s') cameraY=Math.min(worldHeight-canvas.height,cameraY+step);
   });
 
-  // --- Auto-update loop ---
+  // --- Loop ---
   function gameLoop() {
     redraw();
     requestAnimationFrame(gameLoop);
   }
 
-  // --- Initialize ---
   window.addEventListener('load', () => {
     resizeCanvas();
     gameLoop();
@@ -288,6 +289,3 @@
 </script>
 </body>
 </html>
-
-</body>
-<html>
