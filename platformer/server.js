@@ -15,9 +15,10 @@ const GRAVITY = 1600;
 const WORLD = {
   width: 5000,
   height: 2000,
+  spawn: { x: 100, y: 500 },   // ✅ NEW: default spawn point
   platforms: [
-    {"x":56,"y":616,"w":798,"h":54,"rotation":-152.02052561151987,"material":"bounce","rotationHandle":{"x":455,"y":576}},
-    {"x":772,"y":803,"w":1194,"h":50,"rotation":0,"material":"ice","rotationHandle":{"x":1369,"y":763}}
+    {"x":56,"y":616,"w":798,"h":54,"rotation":-152.02052561151987,"material":"bounce"},
+    {"x":772,"y":803,"w":1194,"h":50,"rotation":0,"material":"ice"}
   ]
 };
 
@@ -69,8 +70,10 @@ setInterval(() => {
 
 // Spawn
 function spawnPlayer(username) {
+  const spawn = WORLD.spawn || { x: 100, y: 500 }; // ✅ use world.spawn
   return {
-    x: 100, y: 500,
+    x: spawn.x,
+    y: spawn.y,
     vx: 0, vy: 0,
     dir: 1,
     onGround: false,
@@ -80,6 +83,19 @@ function spawnPlayer(username) {
     jumpBuffer: 0
   };
 }
+
+function respawnPlayer(p) {
+  const spawn = WORLD.spawn || { x: 100, y: 500 }; // ✅ use world.spawn
+  p.x = spawn.x;
+  p.y = spawn.y;
+  p.vx = 0;
+  p.vy = 0;
+  p.onGround = false;
+  p.coyoteTimer = 0;
+  p.jumpBuffer = 0;
+  p.dir = 1;
+}
+
 
 // SAT helpers
 function dot(a,b){return a.x*b.x+a.y*b.y;}
