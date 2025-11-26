@@ -37,7 +37,7 @@
       <button id="editorBtn">Map Editor</button>
     </div>
     <div id="game">
-      <canvas id="canvas" width="800" height="600"></canvas>
+      <canvas id="canvas"></canvas>
     </div>
   </div>
   <div id="right">
@@ -58,6 +58,14 @@
     const socket = io();
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    function resizeCanvas() {
+      const jsonPanel = document.getElementById('jsonPanel');
+      const panelWidth = jsonPanel ? jsonPanel.offsetWidth : 0;
+      canvas.width = window.innerWidth - panelWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+
     const messages=document.getElementById('messages');
     const chatForm=document.getElementById('chatForm');
     const chatInput=document.getElementById('chatInput');
