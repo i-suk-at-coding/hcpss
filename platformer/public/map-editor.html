@@ -113,9 +113,14 @@
   }
 
   function worldToLiteral(world) {
-    return `const WORLD = ${JSON.stringify(world, null, 2)
-      .replace(/"(\w+)":/g, '$1:')}`; // strip quotes from keys
-  }
+  // stringify with indentation
+  let str = JSON.stringify(world, null, 2);
+  // remove quotes around simple keys
+  str = str.replace(/"(\w+)":/g, '$1:');
+  // wrap in const WORLD = { … };
+  return `const WORLD = ${str}`;
+}
+
 
   // --- Redraw ---
   function redraw() {
