@@ -113,13 +113,26 @@
   }
 
   function worldToLiteral(world) {
-  // stringify with indentation
+  // Pretty print first
   let str = JSON.stringify(world, null, 2);
-  // remove quotes around simple keys
+  // Remove quotes from simple keys
   str = str.replace(/"(\w+)":/g, '$1:');
-  // wrap in const WORLD = { … };
+  // Collapse arrays of objects (like points) onto one line
+  str = str.replace(/
+
+\[\s+([\s\S]*?)\s+\]
+
+/g, match => {
+    // remove newlines and extra spaces inside brackets
+    return '[' + match
+      .replace(/[\r\n]+/g, ' ')   // replace newlines with spaces
+      .replace(/\s+/g, ' ')       // collapse spaces
+      .replace(/},\s{/g, '}, {')  // ensure proper spacing between objects
+      .trim() + ']';
+  });
   return `const WORLD = ${str}`;
 }
+
 
 
   // --- Redraw ---
