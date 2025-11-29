@@ -112,28 +112,26 @@
     ];
   }
 
-  function worldToLiteral(world) {
+function worldToLiteral(world) {
   // Pretty print first
   let str = JSON.stringify(world, null, 2);
-  // Remove quotes from simple keys
+  // Remove quotes around simple keys
   str = str.replace(/"(\w+)":/g, '$1:');
-  // Collapse arrays of objects (like points) onto one line
-  str = str.replace(/
+  // Collapse only points arrays
+  str = str.replace(/points:\s*
 
-\[\s+([\s\S]*?)\s+\]
+\[[\s\S]*?\]
 
 /g, match => {
-    // remove newlines and extra spaces inside brackets
-    return '[' + match
+    // remove newlines and extra spaces inside points array
+    return match
       .replace(/[\r\n]+/g, ' ')   // replace newlines with spaces
       .replace(/\s+/g, ' ')       // collapse spaces
-      .replace(/},\s{/g, '}, {')  // ensure proper spacing between objects
-      .trim() + ']';
+      .replace(/},\s{/g, '}, {')  // spacing between objects
+      .trim();
   });
   return `const WORLD = ${str}`;
 }
-
-
 
   // --- Redraw ---
   function redraw() {
