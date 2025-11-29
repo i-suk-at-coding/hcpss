@@ -112,26 +112,43 @@
     ];
   }
 
-function worldToLiteral(world) {
-  // Pretty print first
-  let str = JSON.stringify(world, null, 2);
-  // Remove quotes around simple keys
-  str = str.replace(/"(\w+)":/g, '$1:');
-  // Collapse only points arrays
-  str = str.replace(/points:\s*
-
-\[[\s\S]*?\]
-
-/g, match => {
-    // remove newlines and extra spaces inside points array
-    return match
-      .replace(/[\r\n]+/g, ' ')   // replace newlines with spaces
-      .replace(/\s+/g, ' ')       // collapse spaces
-      .replace(/},\s{/g, '}, {')  // spacing between objects
-      .trim();
-  });
-  return `const WORLD = ${str}`;
+function formatPoint(pt) {
+  const x = Number.isInteger(pt.x) ? pt.x : Number(pt.x.toFixed(4));
+  const y = Number.isInteger(pt.y) ? pt.y : Number(pt.y.toFixed(4));
+  return `{ x: ${x}, y: ${y} }`;
 }
+
+function formatPlatform(p) {
+  if (p.type === 'curve' && Array.isArray(p.points)) {
+    const pointsInline = p.points.map(formatPoint).join(', ');
+    return `{
+      type: "curve",
+      material: "${p.material}",
+      points: [ ${pointsInline} ]
+    }`;
+  }
+  // Rects or other types
+  return `{
+    type: "${p.type}",
+    material: "${p.material}",
+    x: ${p.x}, y: ${p.y}, w: ${p.w}, h: ${p.h}${p.rotation ? `, rotation: ${p.rotation}` : ''}
+  }`;
+}
+
+function worldToLiteral(world) {
+  const platforms = (world.platforms || []).map(formatPlatform).join(',\n    ');
+  const spawn = `spawn: { x: ${world.spawn?.x ?? 0}, y: ${world.spawn?.y ?? 0} }`;
+  const width = world.width != null ? `\n  width: ${world.width},` : '';
+  const height = world.height != null ? `\n  height: ${world.height},` : '';
+
+  return `const WORLD = {${width}${height}
+  platforms: [
+    ${platforms}
+  ],
+  ${spawn}
+}`;
+}
+
 
   // --- Redraw ---
   function redraw() {
