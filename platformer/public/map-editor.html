@@ -112,6 +112,11 @@
     ];
   }
 
+  function worldToLiteral(world) {
+    return `const WORLD = ${JSON.stringify(world, null, 2)
+      .replace(/"(\w+)":/g, '$1:')}`; // strip quotes from keys
+  }
+
   // --- Redraw ---
   function redraw() {
     ctx.fillStyle = '#222';
@@ -176,7 +181,7 @@
     }
 
     // JSON output
-    output.value = JSON.stringify(world,null,2);
+    output.value = worldToLiteral(world);
   }
 
   // --- Toolbar Actions ---
@@ -190,7 +195,7 @@
     selectedIndices = [];
     redraw();
   });
-  saveBtn.addEventListener('click', () => { output.value = JSON.stringify(world,null,2); });
+  saveBtn.addEventListener('click', () => { output.value = worldToLiteral(world); });
   copyBtn.addEventListener('click', () => { output.select(); document.execCommand('copy'); alert('JSON copied!'); });
   spawnBtn.addEventListener('click', () => { settingSpawn = true; });
 
