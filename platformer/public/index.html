@@ -2,8 +2,10 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Pure Platformer</title>
+    <title>Platformer + Chat</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
     <style>
         html, body {
             margin: 0;
@@ -11,13 +13,46 @@
             overflow: hidden;
             width: 100%;
             height: 100%;
+            font-family: sans-serif;
         }
         canvas {
             display: block;
         }
+
+        /* CHAT UI */
+        #chatBox {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 300px;
+            max-height: 250px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        #chatInput {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 300px;
+            padding: 6px;
+            border-radius: 6px;
+            border: none;
+            outline: none;
+            font-size: 14px;
+            display: none;
+        }
     </style>
 </head>
+
 <body>
+
+<div id="chatBox"></div>
+<input id="chatInput" placeholder="Type message..." />
 
 <script>
 /* -------------------------------------------------------
@@ -25,7 +60,6 @@
 ------------------------------------------------------- */
 const MAP = [
     { x: 1500, y: 11980, w: 3000, h: 40, color: 0x228B22 },
-
     { x: 500,  y: 11500, w: 300, h: 40, color: 0x8B4513 },
     { x: 2000, y: 11200, w: 300, h: 40, color: 0x8B4513 },
     { x: 1200, y: 10800, w: 300, h: 40, color: 0x8B4513 },
@@ -64,14 +98,11 @@ const MAP = [
 ------------------------------------------------------- */
 function createPlatform(scene, obj) {
     const rect = scene.add.rectangle(obj.x, obj.y, obj.w, obj.h, obj.color);
-    scene.matter.add.gameObject(rect, {
-        isStatic: true
-    });
-    return rect;
+    scene.matter.add.gameObject(rect, { isStatic: true });
 }
 
 /* -------------------------------------------------------
-   PURE PLATFORMER SCENE
+   PLATFORMER SCENE
 ------------------------------------------------------- */
 class PlatformerScene extends Phaser.Scene {
     constructor() {
@@ -93,6 +124,8 @@ class PlatformerScene extends Phaser.Scene {
 
         this.createPlayer();
         this.createControls();
+
+        setupChat();
     }
 
     createPlayer() {
@@ -102,7 +135,6 @@ class PlatformerScene extends Phaser.Scene {
         this.player.setFixedRotation();
         this.player.setFriction(0.001);
         this.player.setFrictionAir(0.02);
-        this.player.setBounce(0);
 
         this.playerSpeed = 6;
         this.jumpVelocity = -10;
@@ -111,7 +143,7 @@ class PlatformerScene extends Phaser.Scene {
     }
 
     createControls() {
-        this.keys = this.input.keyboard.addKeys("W,A,S,D");
+        this.keys = this.input.keyboard.addKeys("W,A,S,D,ENTER");
     }
 
     update() {
@@ -122,18 +154,43 @@ class PlatformerScene extends Phaser.Scene {
         const body = this.player.body;
         const onGround = Math.abs(body.velocity.y) < 0.01;
 
-        if (this.keys.A.isDown) {
-            this.player.setVelocityX(-this.playerSpeed);
-        } else if (this.keys.D.isDown) {
-            this.player.setVelocityX(this.playerSpeed);
-        } else {
-            this.player.setVelocityX(0);
-        }
+        if (this.keys.A.isDown) this.player.setVelocityX(-this.playerSpeed);
+        else if (this.keys.D.isDown) this.player.setVelocityX(this.playerSpeed);
+        else this.player.setVelocityX(0);
 
-        if (Phaser.Input.Keyboard.JustDown(this.keys.W) && onGround) {
+        if (Phaser.Input.Keyboard.JustDown(this.keys.W) && onGround)
             this.player.setVelocityY(this.jumpVelocity);
-        }
     }
+}
+
+/* -------------------------------------------------------
+   CHAT SYSTEM
+------------------------------------------------------- */
+const socket = io();
+const chatBox = document.getElementById("chatBox");
+const chatInput = document.getElementById("chatInput");
+
+function setupChat() {
+    window.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+            if (chatInput.style.display === "none") {
+                chatInput.style.display = "block";
+                chatInput.focus();
+            } else {
+                const msg = chatInput.value.trim();
+                if (msg.length > 0) socket.emit("chatMessage", msg);
+                chatInput.value = "";
+                chatInput.style.display = "none";
+            }
+        }
+    });
+
+    socket.on("chatMessage", data => {
+        const div = document.createElement("div");
+        div.textContent = data.id + ": " + data.text;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
 }
 
 /* -------------------------------------------------------
@@ -145,10 +202,7 @@ new Phaser.Game({
     backgroundColor: "#87CEEB",
     physics: {
         default: "matter",
-        matter: {
-            gravity: { y: 1 },
-            debug: true
-        }
+        matter: { gravity: { y: 1 }, debug: true }
     },
     scene: PlatformerScene
 });
